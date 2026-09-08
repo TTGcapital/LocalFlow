@@ -6,6 +6,10 @@ and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.3.0] — 2026-09-08
+
 ### Added
 
 - Optional **Clean up dictation with Claude before pasting** (Settings → Claude,
@@ -75,5 +79,6 @@ First public release. Apple Silicon, macOS 26 or newer.
 - Automatic call-end detection, team accounts, connector management, screen-share
   hiding, and signed distribution are not implemented.
 
-[Unreleased]: https://github.com/girzsebastian/LocalFlow/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/girzsebastian/LocalFlow/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/girzsebastian/LocalFlow/releases/tag/v0.3.0
 [0.2.0]: https://github.com/girzsebastian/LocalFlow/releases/tag/v0.2.0
