@@ -6,6 +6,21 @@ and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Optional **Clean up dictation with Claude before pasting** (Settings → Claude,
+  off by default). After local transcription, dictionary and snippet expansion,
+  the transcript is sent to Claude with a fixed cleanup instruction that removes
+  fillers and applies spoken self-corrections such as "by Tuesday, oh no, sorry,
+  by Thursday" or "cc John, I mean Jane". The cleaned text is what gets pasted
+  and copied. The literal Whisper transcript is kept on the library entry under
+  **Before Claude cleanup**, with **Restore literal** to undo.
+- The cleanup step has a 45-second timeout and an output guard. If Claude is
+  slow, signed out, refuses, or returns something that is not a rewrite, the raw
+  dictation is pasted and the widget says so. Dictation never blocks on Claude.
+- Offline tests for the cleanup guard and preference defaults, plus a
+  `cleanup` smoke test that runs the real Claude CLI.
+
 ## [0.2.0] — 2026-09-08
 
 First public release. Apple Silicon, macOS 26 or newer.

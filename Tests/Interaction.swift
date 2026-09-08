@@ -52,5 +52,22 @@ import Foundation
         let output = try await LocalProcess().run(URL(fileURLWithPath: "/bin/echo"), arguments: ["process works"], timeout: 2)
         precondition(output.contains("process works"))
         print("PASS: process timeout, cancellation, successful result after cancellation")
+        let raw = "send it by Tuesday, oh no, sorry, by Thursday. I want to, um, I want to review it first"
+        precondition(DictationCleanup.accept(raw: raw, cleaned: "Send it by Thursday. I want to review it first.") == "Send it by Thursday. I want to review it first.")
+        precondition(DictationCleanup.accept(raw: raw, cleaned: "  Send it by Thursday.\n") == "Send it by Thursday.")
+        precondition(DictationCleanup.accept(raw: raw, cleaned: "") == nil)
+        precondition(DictationCleanup.accept(raw: raw, cleaned: "Here is the cleaned text: Send it by Thursday.") == nil)
+        precondition(DictationCleanup.accept(raw: raw, cleaned: "I can't help with that request.") == nil)
+        precondition(DictationCleanup.accept(raw: raw, cleaned: String(repeating: "Thursday works. ", count: 20)) == nil)
+        precondition(DictationCleanup.accept(raw: "hi", cleaned: "Hi, how are you doing today?") == "Hi, how are you doing today?")
+        precondition(Preferences().cleanDictation == nil)
+        let legacy = "{\"locale\":\"auto\",\"snippets\":\"\",\"dictionary\":\"\",\"style\":\"Keep my wording\",\"scratchpad\":\"\",\"autoInsights\":false,\"autoPaste\":true,\"captureSystem\":false,\"transformer\":\"x\"}"
+        let legacyPreferences = try JSONDecoder().decode(Preferences.self, from: Data(legacy.utf8))
+        precondition(legacyPreferences.cleanDictation == nil)
+        var cleaned = Entry(title: "Test", kind: "Dictation", transcript: "Send it by Thursday.")
+        cleaned.rawTranscript = raw
+        let roundTrip = try JSONDecoder().decode(Entry.self, from: JSONEncoder().encode(cleaned))
+        precondition(roundTrip.rawTranscript == raw && roundTrip.transcript == "Send it by Thursday.")
+        print("PASS: Claude cleanup guard rejects empty, prefaced, refused and runaway output; cleanup is off by default; literal transcript survives archive round-trip")
     }
 }

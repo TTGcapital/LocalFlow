@@ -53,6 +53,14 @@ Additional checks:
 - Live speaker labels identify audio source: `You` for the microphone and `Meeting participants` for computer audio. They do not identify individual remote people. Summary/chat use only the captured meeting context through Claude.
 - Reading concurrently growing microphone/system CAF files, the ScreenCaptureKit permission prompt, and the complete live-meeting UI still require an interactive real-call test on this Mac.
 
+## Claude dictation cleanup — 2026-09-08
+- Preference `cleanDictation` is optional and nil by default, so archives written by earlier builds decode unchanged and the feature stays off until enabled in Settings → Claude.
+- Pipeline order is unchanged up to paste: Whisper → dictionary → snippets → Claude cleanup (only when enabled, only for Dictation entries) → copy → paste → correction watch. Notetaker entries are never cleaned.
+- Actual Claude CLI call through `ClaudeBridge.cleanDictation` with the same `-p --safe-mode --tools ""` arguments the app uses, signed in with the Claude subscription. Input: “Hey, can you send me the report by Tuesday, oh no, sorry, by Thursday. I want to, um, I want to review it before the, uh, before the client meeting. Also please cc John, sorry I mean Jane, on the email.” Output: “Hey, can you send me the report by Thursday? I want to review it before the client meeting. Also, please cc Jane on the email.” About seven seconds end to end with the default model.
+- Offline guard tests: empty output, “Here is…” prefaces, refusals, and output more than about 30 percent longer than the dictation are rejected and the raw text is pasted. Short dictations may grow by up to 40 characters for punctuation and capitalization.
+- Failure path: any thrown error from the CLI (signed out, timeout after 45 seconds, non-zero exit) is caught, the raw dictation is pasted, and the widget shows “Claude cleanup skipped · pasted the raw dictation”.
+- Not checked interactively yet: the end-to-end hold → speak → release → cleaned paste flow in a real text field with the toggle on. The `cleanup` smoke test and the code path are covered; the UI toggle and widget notice need a manual run.
+
 ## Incremental dictation and multilingual speed
 
 - Dictation now records uncompressed CAF so completed intervals can be read before recording ends. A growing CAF integration check successfully extracted a one-second WAV while the writer was still active.

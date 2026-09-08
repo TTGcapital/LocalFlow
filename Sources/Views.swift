@@ -135,6 +135,17 @@ struct EntryView: View {
                 }
                 HStack { Text("TRANSCRIPT").font(.caption.bold()).foregroundStyle(.secondary); Spacer(); Button("Copy") { s.copy(entry.transcript) }.disabled(entry.transcript.isEmpty) }
                 TextEditor(text: Binding(get: { entry.transcript }, set: { text in s.update(id) { $0.transcript = text } })).font(.system(size: 15)).frame(minHeight: 220).padding(8).overlay(RoundedRectangle(cornerRadius: 8).stroke(.secondary.opacity(0.15)))
+                if let raw = entry.rawTranscript, !raw.isEmpty, raw != entry.transcript {
+                    DisclosureGroup("Before Claude cleanup · literal dictation") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(raw).textSelection(.enabled)
+                            HStack {
+                                Button("Copy literal") { s.copy(raw) }
+                                Button("Restore literal") { s.update(id) { $0.transcript = raw; $0.rawTranscript = nil } }
+                            }
+                        }.padding(.top, 8)
+                    }
+                }
                 if let segments = entry.meetingSegments, !segments.isEmpty {
                     DisclosureGroup("Speaker timeline · \(segments.count) live segments") {
                         VStack(alignment: .leading, spacing: 10) {

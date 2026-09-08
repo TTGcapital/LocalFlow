@@ -34,6 +34,7 @@ It is designed for people searching for a **Wispr Flow alternative**, **WisprFlo
 - Mutes Mac output while dictating and restores the previous output state afterward.
 - English, Romanian, or multilingual English + Romanian mode.
 - Personal dictionary, reusable snippets, styles, transforms, scratchpad, and correction suggestions.
+- Optional Claude cleanup before paste: say "send it by Tuesday, oh no, sorry, by Thursday" and the pasted text reads "Send it by Thursday." Fillers and spoken self-corrections are resolved, the literal transcript is kept in the library, and dictation falls back to the raw text if Claude is unavailable. Off by default; enable it under **Settings → Claude**.
 
 ### Notetaker
 
@@ -73,8 +74,10 @@ The app includes a floating widget, language control, dictionary, snippets, styl
                          Whisper large-v3-turbo
                                       ↓
                     dictionary and snippets → paste
+                              ↓ (optional, off by default)
+                Claude cleanup: fillers and "oh no, sorry, I mean…" resolved
 
-Notetaker stores local audio and transcript segments. Claude is an optional final step for requested summaries, transforms, and meeting questions.
+Notetaker stores local audio and transcript segments. Claude is an optional step for dictation cleanup, requested summaries, transforms, and meeting questions.
 
 ## Install on macOS
 
@@ -122,7 +125,7 @@ On first launch, allow Microphone access. Add LocalFlow under **System Settings 
 
 Speech audio is processed on the Mac by Whisper.cpp. LocalFlow does not require a transcription account, does not send microphone audio to a transcription API, and does not include telemetry. The local Whisper server binds to **127.0.0.1** only.
 
-Claude is an optional separate path. It uses the existing **claude** CLI login for requested summaries, transforms, and meeting questions. Read the prompt and choose the Claude action before sending transcript text to it.
+Claude is an optional separate path. It uses the existing **claude** CLI login for requested summaries, transforms, and meeting questions. Read the prompt and choose the Claude action before sending transcript text to it. If you turn on **Clean up dictation with Claude before pasting**, every dictation transcript is sent to Claude before it is pasted; leave it off if you dictate content that must not leave your Mac.
 
 ## Architecture
 

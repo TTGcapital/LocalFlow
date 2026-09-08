@@ -450,7 +450,23 @@ import UniformTypeIdentifiers
                 }
                 try Task.checkCancellation()
                 guard jobID == operation else { return }
-                let text = expand(expand(raw, rules: preferences.dictionary), rules: preferences.snippets)
+                let expanded = expand(expand(raw, rules: preferences.dictionary), rules: preferences.snippets)
+                var text = expanded
+                if entry.kind == "Dictation", preferences.cleanDictation == true, !expanded.isEmpty {
+                    // Opt-in Claude pass. Any failure falls back to the literal transcript so
+                    // dictation never blocks on Claude.
+                    status = "Cleaning up with Claude…"
+                    do {
+                        if let cleaned = try await claude.cleanDictation(expanded), cleaned != expanded {
+                            text = cleaned
+                            update(id) { $0.rawTranscript = expanded }
+                        }
+                    } catch {
+                        notifyWidget("Claude cleanup skipped · pasted the raw dictation")
+                    }
+                    try Task.checkCancellation()
+                    guard jobID == operation else { return }
+                }
                 update(id) { $0.transcript = text }
                 if entry.kind == "Dictation" {
                     copy(text)

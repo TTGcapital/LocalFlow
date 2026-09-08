@@ -54,6 +54,13 @@ Claude CLI, so they are run by hand:
     xcrun swiftc -swift-version 5 -parse-as-library Sources/*.swift Tests/Multilingual.swift -o build/multilingual -framework SwiftUI -framework AppKit -framework AVFoundation -framework Speech -framework Carbon -framework ScreenCaptureKit -framework CoreAudio -framework ServiceManagement -framework EventKit -framework UserNotifications
     ./build/multilingual
 
+To check the Claude paths against a real signed-in `claude` CLI, build the smoke
+suite without the app entry point and run `./build/smoke claude` for meeting
+insights or `./build/smoke cleanup` for dictation cleanup:
+
+    xcrun swiftc -swift-version 5 -parse-as-library Sources/Core.swift Sources/LocalProcess.swift Sources/WhisperServer.swift Sources/WhisperTranscription.swift Sources/MeetingAudio.swift Tests/Smoke.swift -o build/smoke -framework AVFoundation -framework Speech
+    ./build/smoke cleanup
+
 Anything that can only be checked by a human — permission prompts, the floating
 widget, mouse buttons, an actual call — belongs in [VALIDATION.md](VALIDATION.md).
 Please add what you verified there, and be honest about what you did *not* check.

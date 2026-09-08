@@ -68,8 +68,10 @@ struct PreferencesView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     Text(s.claudeStatus)
                     HStack { Button("Sign in") { s.login() }; Button("Check connection") { s.checkClaude() } }
+                    Toggle("Clean up dictation with Claude before pasting", isOn: Binding(get: { s.preferences.cleanDictation ?? false }, set: { s.preferences.cleanDictation = $0; s.save() }))
+                    Text("Removes fillers and applies spoken self-corrections such as “by Tuesday, oh no, sorry, by Thursday” so the pasted text is the message you meant. Adds a few seconds before paste. If Claude is slow, signed out, or returns something unusable, the raw dictation is pasted instead. The literal transcript is kept in the library.").font(.caption).foregroundStyle(.secondary)
                     Toggle("Automatically create meeting insights", isOn: $s.preferences.autoInsights).onChange(of: s.preferences.autoInsights) { s.save() }
-                    Text("Uses Claude Code with your subscription. Transcript text is sent to Claude for insights, style and transforms. Account usage limits and extra-usage settings apply.").font(.caption).foregroundStyle(.secondary)
+                    Text("Uses Claude Code with your subscription. Transcript text is sent to Claude for cleanup, insights, style and transforms. Account usage limits and extra-usage settings apply.").font(.caption).foregroundStyle(.secondary)
                 }.padding(14)
             }
         default:
