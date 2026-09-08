@@ -1,91 +1,180 @@
-# LocalFlow 0.2
+# LocalFlow
 
-Local-first macOS dictation and meeting notes with a floating control, multilingual English/Romanian transcription, and Claude-assisted notes.
+### A free, local Wispr Flow alternative for macOS
 
-This is an experimental personal replacement for Wispr Flow. It is currently distributed as source code for Apple Silicon Macs; there is no signed public release yet.
+LocalFlow turns your voice into text in any Mac app. Hold a shortcut, speak, release, and the transcript is inserted where your cursor is. It also records meetings, separates your microphone from computer audio, creates summaries, and lets you chat with the saved discussion.
 
-## Dictation
+There is no transcription subscription and no account required. Speech recognition runs locally with Whisper on Apple Silicon. Claude is optional and is used only for the writing and meeting features you choose to run.
 
-- **Hold** your shortcut while speaking; **release** to transcribe and paste.
-- **Double-tap quickly** (within 0.32 seconds) for hands-free recording. Press once to finish.
-- A single quick tap ends after the double-tap window. Very short recordings show a helpful error.
-- Keyboard autorepeat does not toggle recording repeatedly.
-- In Settings, choose a keyboard combination, Mouse 4, or Mouse 5. Your existing shortcut is retained.
-- Floating microphone/note buttons start hands-free recording. Click Stop to finish.
-- After about 0.75 seconds of silence, LocalFlow transcribes the completed phrase in the background while the microphone keeps recording. The widget shows how many phrases are ready. Stop processes only the uncommitted tail and then pastes the joined result.
+[![macOS](https://img.shields.io/badge/macOS-26%2B-111827?logo=apple)](https://www.apple.com/macos/) [![Swift](https://img.shields.io/badge/Swift-SwiftUI-F05138?logo=swift&logoColor=white)](https://www.swift.org/) [![Whisper](https://img.shields.io/badge/speech-Whisper.cpp-6b46c1)](https://github.com/ggerganov/whisper.cpp) [![Local first](https://img.shields.io/badge/data-local--first-0f766e)](#privacy)
 
-The floating control shows microphone activity, silence, processing stage, elapsed processing time, and Cancel. It moves to the left edge of the screen containing the mouse and follows active desktop changes. It does not chase every mouse movement within one screen.
+## Why LocalFlow exists
 
-## Languages
+Wispr Flow made system-wide voice typing feel natural, but a subscription is not a good fit for everyone and some workflows need local audio. LocalFlow is an open project built around the same useful idea: a small floating control, a global push-to-talk shortcut, automatic paste into the focused app, personal vocabulary, and a meeting workspace.
 
-Choose **English**, **Română**, or **Multilingual · English + Romanian** in Settings or the widget’s EN/RO/ML menu. Multilingual is selected when upgrading to 0.2.
+It is designed for people searching for a **Wispr Flow alternative**, **WisprFlow alternative for Mac**, **offline voice typing**, or a **private local dictation app**.
 
-The installed local Whisper large-v3-turbo model supports Romanian and English. Multilingual detects language separately for phrases divided by pauses and decodes each phrase in its detected language. Detection is restricted to English and Romanian so an accented English phrase cannot switch the transcript to an unrelated alphabet. A short natural pause when switching languages helps. Recognition, especially fast code-switching without pauses, is not guaranteed perfect.
+## What it does
 
-Speech runs on this Mac using whisper.cpp and the downloaded models. A localhost-only speech process keeps the large model loaded during use; a compact detector routes English and Romanian. Dictation does not use Claude, Apple’s speech-model download service, or a paid API. Startup/model/GPU warmup can be slower than subsequent phrases.
+### Dictation
 
-Notetaker shows a live conversation window while recording. It labels the microphone as **You** and computer audio as **Meeting participants**, provides **Summarize so far**, and keeps a chat grounded in that meeting’s captured transcript. It cannot reliably name individual remote speakers. Live text uses the compact multilingual Whisper model for responsiveness; stopping the note runs the larger model over the saved recording for the final transcript.
+- Hold a configurable keyboard or mouse shortcut to speak; release to finish.
+- Double-tap the shortcut for hands-free mode, then press it once to stop.
+- After a short pause, completed phrases are transcribed in the background while you continue speaking. Stop only waits for the unprocessed tail.
+- Inserts text into the active field, with clipboard fallback when macOS Accessibility insertion is unavailable.
+- Mutes Mac output while dictating and restores the previous output state afterward.
+- English, Romanian, or multilingual English + Romanian mode.
+- Personal dictionary, reusable snippets, styles, transforms, scratchpad, and correction suggestions.
 
-## Paste permissions
+### Notetaker
 
-Enable **LocalFlow** in System Settings → Privacy & Security → **Accessibility**. The app shows permission status and automatically refreshes the mouse shortcut when access is granted. Also allow the microphone on first use.
+- Record your microphone and, with permission, computer audio from Zoom, Google Meet, or another call.
+- See a live conversation with **You** and **Meeting participants** source labels.
+- Ask Claude for a summary, decisions, action items, or answers grounded in the captured meeting.
+- Keep audio, transcript, meeting segments, summaries, and chat history in the local library.
 
-The app captures the active field, restores focus, tries supported Accessibility text insertion, and falls back to Command V after shortcut modifiers lift. If permission is missing or focus cannot be restored, the transcript stays copied and a visible error explains what to do. Transcription and clipboard copy do not require Accessibility.
+### A Wispr Flow-style workspace
 
-Local development builds are ad-hoc signed with a stable designated requirement so macOS can retain its Accessibility grant across rebuilds. A public release needs a Developer ID signing identity and notarization.
+The app includes a floating widget, language control, dictionary, snippets, styles, transforms, scratchpad, insights, notifications, calendar reminders, and settings for shortcuts, audio, privacy, and Notetaker behavior.
 
-## Notetaker and writing tools
+## LocalFlow compared with Wispr Flow
 
-Record a note or import audio/video, then transcribe. Settings can include computer audio alongside the microphone. macOS asks for Screen & System Audio Recording permission; no video is saved. Use headphones to avoid echo. Original tracks and mixed audio are retained.
+| Capability | LocalFlow | Wispr Flow |
+| --- | --- | --- |
+| System-wide dictation | Yes | Yes |
+| Push-to-talk and toggle modes | Yes | Yes |
+| Automatic paste at the cursor | Yes | Yes |
+| Background phrase transcription | Yes | Yes |
+| English + Romanian multilingual mode | Yes | Yes |
+| Notetaker with meeting audio | Yes | Yes |
+| Dictionary, snippets, styles, transforms | Yes | Yes |
+| Local Whisper transcription | Yes | Service-dependent |
+| Transcription subscription | No | Plan-dependent |
+| Claude-powered summaries and meeting chat | Optional local Claude CLI | Service-dependent |
+| Team accounts and cloud sharing | Not yet | Yes |
 
-Each entry supports playback, editable transcripts, audio/Markdown export, Claude meeting insights, writing styles, and a custom transformer. Scratchpad, dictionary corrections, whole-phrase snippets, and library search are included.
+## How it works
 
-Claude uses the existing official `~/.local/bin/claude` CLI and requires Claude subscription authentication. It removes inherited API credentials, uses safe mode with tools and MCP disabled, and does not read OAuth tokens directly. Only requested Claude actions or explicitly enabled automatic note insights send transcript text to Claude. Claude’s subscription limits and any paid extra-usage settings still apply.
+    Global shortcut
+          ↓
+    Floating widget → CAF microphone recording → pause detector
+                                      ↓
+              compact English/Romanian detector
+                                      ↓
+                         Whisper large-v3-turbo
+                                      ↓
+                    dictionary and snippets → paste
 
-## Recovery and storage
+Notetaker stores local audio and transcript segments. Claude is an optional final step for requested summaries, transforms, and meeting questions.
 
-`~/Library/Application Support/LocalFlow/archive.json` stores notes and preferences; `Audio/` stores recordings; `Models/` contains the local speech models. Saves are atomic. A corrupt library is not overwritten. Removing an entry keeps its audio files.
+## Install on macOS
 
-Audio conversion and language detection are cancellable, and local inference requests respect task cancellation. The app stops its localhost speech processes during normal quit. Empty or silent audio is rejected, and original audio remains available for retry.
+The repository currently builds a local Apple Silicon app. A signed and notarized public release is not available yet.
 
-`diagnostics.json` records permission/model availability only, not transcript contents.
+### 1. Install prerequisites
 
-## Build
+    xcode-select --install
+    brew install ffmpeg whisper-cpp
 
-Requires macOS 26, Xcode/Command Line Tools, `ffmpeg`, `whisper-cli` and `whisper-server` from Homebrew `whisper-cpp`, plus the Whisper models stored in `~/Library/Application Support/LocalFlow/Models/`. The current scripts expect Apple Silicon Homebrew at `/opt/homebrew/bin`.
+The build scripts currently expect Apple Silicon Homebrew at **/opt/homebrew/bin**.
 
-Install the command-line tools with `brew install ffmpeg whisper-cpp`. Download the large-v3-turbo and base quantized models from the [whisper.cpp model repository](https://huggingface.co/ggerganov/whisper.cpp), then place them at:
+### 2. Download the speech models
 
-```text
-~/Library/Application Support/LocalFlow/Models/ggml-large-v3-turbo-q5_0.bin
-~/Library/Application Support/LocalFlow/Models/ggml-base-q5_1.bin
-```
+    git clone https://github.com/girzsebastian/LocalFlow.git
+    cd LocalFlow
+    ./scripts/download-models.sh
 
-Build and run the local checks:
+The script downloads the quantized Whisper models from the [whisper.cpp model repository](https://huggingface.co/ggerganov/whisper.cpp), verifies their SHA-256 checksums, and stores them under **~/Library/Application Support/LocalFlow/Models/**.
 
-```sh
-./build.sh
-xcrun swiftc -swift-version 5 -parse-as-library Sources/Core.swift Sources/CorrectionSuggestion.swift Sources/LocalProcess.swift Sources/WhisperServer.swift Sources/WhisperTranscription.swift Sources/ShortcutGesture.swift Sources/UsageSummary.swift Sources/MeetingWindowMatcher.swift Tests/Interaction.swift -o build/interaction -framework Speech -framework AVFoundation
-./build/interaction
-xcrun swiftc -swift-version 5 -parse-as-library Sources/Core.swift Sources/LocalProcess.swift Sources/WhisperServer.swift Sources/WhisperTranscription.swift Sources/StreamingDictationTranscription.swift Tests/StreamingBenchmark.swift -o build/streaming-benchmark -framework Speech -framework AVFoundation
-./build/streaming-benchmark build/bilingual.wav
-```
+### 3. Build and install
 
-See VALIDATION.md for checks and manual testing limits. Individual remote-speaker identification, cloud sharing/team accounts, and connector management are not implemented.
+    ./build.sh
+    ditto build/LocalFlow.app /Applications/LocalFlow.app
+    open /Applications/LocalFlow.app
 
-The repository does not include recordings, transcripts, local archives, credentials, compiled apps, or model binaries. Choose and add a license before accepting external contributions.
+On first launch, allow Microphone access. Add LocalFlow under **System Settings → Privacy & Security → Accessibility** so the global shortcut and automatic paste can work. The first launch may show an unidentified-developer warning because development builds are ad-hoc signed; use **Open Anyway** in Privacy & Security.
 
-## Widget, system settings, and insights
+### 4. Use it
 
-The widget provides language, dictation, new note, and scratchpad actions. Option M toggles Notetaker. Dictation mutes Mac output by default while leaving the microphone selected and restores previous mute/volume state on stop, failure, or normal quit. Notetaker does not mute output. Changing output devices during dictation mutes the newly selected output too, if macOS exposes mute or volume controls for it.
+1. Choose a shortcut in Settings, or select Mouse 4 / Mouse 5.
+2. Put the cursor in any text field.
+3. Hold the shortcut, speak, and release.
+4. For long thoughts, pause naturally. Completed phrases will be ready before you stop.
 
-Settings include Mac input-device selection, launch at login, Dock and idle-widget visibility, completion sounds, scratchpad resume/new-note behavior, notepad opening, maximum note length, and Markdown/text note import. Changing the input selector changes the Mac-wide input setting. Optional Mac-calendar connection shows upcoming meetings, schedules local reminders, and can display the next meeting in the menu bar. Calendar and notification permissions are requested only when connecting.
+## Privacy
 
-Insights displays actual dictation word counts, measured words per minute, activity, and app usage. The optional Claude writing profile analyzes recent transcript text, not acoustic voice characteristics. Questions across notes use the latest 20 transcribed notes, at most 10,000 characters each, and save answers in local chat history. Dictionary terms can be supplied as model vocabulary hints.
+Speech audio is processed on the Mac by Whisper.cpp. LocalFlow does not require a transcription account, does not send microphone audio to a transcription API, and does not include telemetry. The local Whisper server binds to **127.0.0.1** only.
 
-Automatic call suggestions, live meeting transcript, correction-learning prompts, and final meeting summaries are implemented. Automatic call-end detection, screen tiling, hiding windows from screen share, cloud sharing/team accounts, and connector management are not implemented. The personal app does not offer referral, marketing-notification, or billing pages.
+Claude is an optional separate path. It uses the existing **claude** CLI login for requested summaries, transforms, and meeting questions. Read the prompt and choose the Claude action before sending transcript text to it.
 
-### Desktop widget and meeting suggestions
-The widget now retracts into a subtle edge handle when idle. Move the pointer near it to reveal the controls; dictation and transcription keep it expanded. Choose its behavior in Settings → System.
+## Architecture
 
-Settings → Notifications controls local Zoom/Google Meet meeting-window suggestions and occasional usage tips. Allow macOS notifications and Accessibility for window detection. Suggestions use the focused window title and can include pre-join screens; they never start recording automatically. The Start note notification action starts Notetaker after you choose it. Calendar reminders remain under Settings → Notetaker.
+| Area | Implementation |
+| --- | --- |
+| App and widget | SwiftUI + AppKit |
+| Global shortcuts | Carbon hotkeys and AppKit mouse monitoring |
+| Audio capture | AVAudioRecorder, linear PCM CAF |
+| System audio | ScreenCaptureKit |
+| Speech recognition | whisper.cpp **whisper-server** with Metal |
+| Language routing | Compact Whisper detect-only server, English/Romanian constrained |
+| Text insertion | Accessibility API with clipboard paste fallback |
+| Meeting intelligence | Claude CLI, only when requested or enabled |
+| Storage | Local JSON archive and audio files |
+
+## Project layout
+
+    Sources/App.swift                         App state and recording lifecycle
+    Sources/FloatingControl.swift             Floating widget and waveform
+    Sources/WhisperTranscription.swift        Audio preparation and language routing
+    Sources/WhisperServer.swift               Localhost Whisper model process
+    Sources/StreamingDictationTranscription.swift  Pause-based phrase pipeline
+    Sources/LiveNotetaker.swift               Live transcript, summary, and meeting chat
+    Sources/PreferencesView.swift             Settings and configuration
+    Sources/PasteDestination.swift             Focused-app text insertion
+    Tests/Interaction.swift                   Shortcut, routing, archive, and process checks
+    build.sh                                  Native macOS app build and ad-hoc signing
+
+## Performance
+
+On an Apple M2 Pro test machine:
+
+- A bilingual English/Romanian sample completed in 4.93 seconds and preserved both languages.
+- A 118-second real dictation completed from scratch in 19.69 seconds.
+- Two phrase-level background requests completed in 4.65 seconds.
+
+The first model warm-up is slower. Actual timing depends on the Mac, recording length, pauses, and whether the background queue has already processed the phrases.
+
+## Troubleshooting
+
+**The shortcut does nothing**
+
+Confirm LocalFlow is enabled under Accessibility, then restart the app. Secure Input fields such as password prompts can block global keyboard monitoring.
+
+**The transcript is copied but not inserted**
+
+The text remains in the clipboard. Re-enable Accessibility and try again; the widget explains the current failure without opening the main window.
+
+**The app says the model is missing**
+
+Run **./scripts/download-models.sh** again and verify that both model files are under **~/Library/Application Support/LocalFlow/Models/**.
+
+**The first dictation is slow**
+
+The local Whisper processes are loading their models. Later phrases reuse the warm processes.
+
+## Development
+
+    ./build.sh
+    xcrun swiftc -swift-version 5 -parse-as-library Sources/Core.swift Sources/CorrectionSuggestion.swift Sources/LocalProcess.swift Sources/WhisperServer.swift Sources/WhisperTranscription.swift Sources/ShortcutGesture.swift Sources/UsageSummary.swift Sources/MeetingWindowMatcher.swift Tests/Interaction.swift -o build/interaction -framework Speech -framework AVFoundation
+    ./build/interaction
+
+See [VALIDATION.md](VALIDATION.md) for the tested flows and known manual checks. Contributions are welcome once a project license is selected.
+
+## Status
+
+LocalFlow is an active personal project. The core dictation and Notetaker flows are usable; automatic call-end detection, cloud team accounts, connector management, screen-share hiding, and signed distribution are still planned.
+
+## License
+
+No license has been selected yet. Until one is added, the repository is public for inspection and personal testing; reuse and redistribution are not granted by default.
+
