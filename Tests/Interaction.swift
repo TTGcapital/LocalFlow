@@ -1,0 +1,56 @@
+import Foundation
+
+@main struct InteractionTests {
+    static func main() async throws {
+        let correction = CorrectionWordDiff.suggestion(baseline: "Send this to chersid today", edited: "Send this to Kerrsid today", insertedRange: NSRange(location: 0, length: 26))
+        precondition(correction == CorrectionSuggestion(original: "chersid", corrected: "Kerrsid"))
+        precondition(CorrectionWordDiff.suggestion(baseline: "hello", edited: "hello world", insertedRange: NSRange(location: 0, length: 5)) == nil)
+        print("PASS: edited dictated words create bounded dictionary suggestions; appended text does not")
+        precondition(MeetingWindowMatcher.matches(bundle: "us.zoom.xos", title: "Zoom Meeting"))
+        precondition(!MeetingWindowMatcher.matches(bundle: "us.zoom.xos", title: "Zoom Workplace"))
+        precondition(MeetingWindowMatcher.matches(bundle: "com.google.Chrome", title: "Meet – abc-defg-hij"))
+        precondition(!MeetingWindowMatcher.matches(bundle: "com.google.Chrome", title: "Google Meet"))
+        precondition(!MeetingWindowMatcher.matches(bundle: "com.apple.TextEdit", title: "Meet – abc-defg-hij"))
+        print("PASS: meeting window suggestions exclude app home screens and unrelated apps")
+        var hold = ShortcutGesture()
+        precondition(hold.down(at: 0) == [.start])
+        precondition(hold.down(at: 0.1).isEmpty)
+        precondition(hold.up(at: 1) == [.stop])
+        precondition(hold.up(at: 1.1).isEmpty)
+        hold.reset()
+        precondition(hold.down(at: 2) == [.start])
+        precondition(hold.up(at: 2.1) == [.scheduleRelease])
+        precondition(hold.down(at: 2.25) == [.cancelRelease, .latch])
+        precondition(hold.up(at: 2.3).isEmpty)
+        precondition(hold.releaseExpired().isEmpty)
+        precondition(hold.down(at: 5) == [.stop])
+        hold.reset()
+        _ = hold.down(at: 6); _ = hold.up(at: 6.1)
+        precondition(hold.releaseExpired() == [.stop])
+        let chunks = SpeechSegmentation.chunks(duration: 12, silences: [(5, 6)])
+        precondition(chunks == [SpeechChunk(start: 0, end: 5.5), SpeechChunk(start: 5.5, end: 12)])
+        precondition(SpeechSegmentation.chunks(duration: 8, silences: [(1, 1.5)]).count == 1)
+        let parsed = LanguageRouting.detections(in: "auto-detected language: ro (p = 0.616654)\nauto-detected language: en (p = 0.91)")
+        precondition(parsed == [LanguageDetection(language: "ro", confidence: 0.616654), LanguageDetection(language: "en", confidence: 0.91)])
+        precondition(LanguageRouting.needsEnglishRetry(parsed[0], text: "platformă pe care"))
+        precondition(!LanguageRouting.needsEnglishRetry(LanguageDetection(language: "ro", confidence: 0.99), text: "Bună ziua"))
+        precondition(LanguageRouting.needsEnglishRetry(nil, text: "hello 대에르"))
+        let long = SpeechSegmentation.chunks(duration: 42, silences: [])
+        precondition(long.first?.start == 0 && long.last?.end == 42)
+        precondition(long.allSatisfy { $0.end - $0.start <= 24 })
+        print("PASS: hold/release, repeat suppression, double-tap latch, stop latch, single-tap expiry, multilingual phrase boundaries")
+        let summary = UsageSummary(entries: [Entry(title: "One", kind: "Dictation", transcript: "one two three four", duration: 2), Entry(title: "Note", kind: "Notetaker", transcript: "not counted"), Entry(title: "Old", kind: "Dictation", transcript: "five six")])
+        precondition(summary.totalWords == 6 && summary.wordsPerMinute == 120)
+        precondition(UsageSummary(entries: []).wordsPerMinute == nil)
+        print("PASS: usage counts exclude notes and unmeasured duration is not fabricated")
+        let time = Date()
+        do { _ = try await LocalProcess().run(URL(fileURLWithPath: "/bin/sleep"), arguments: ["10"], timeout: 0.2); fatalError("Timeout did not fire") }
+        catch { precondition(Date().timeIntervalSince(time) < 3) }
+        let child = Task { try await LocalProcess().run(URL(fileURLWithPath: "/bin/sleep"), arguments: ["10"], timeout: 30) }
+        try await Task.sleep(for: .milliseconds(100)); child.cancel()
+        do { _ = try await child.value; fatalError("Cancellation did not fire") } catch is CancellationError {}
+        let output = try await LocalProcess().run(URL(fileURLWithPath: "/bin/echo"), arguments: ["process works"], timeout: 2)
+        precondition(output.contains("process works"))
+        print("PASS: process timeout, cancellation, successful result after cancellation")
+    }
+}

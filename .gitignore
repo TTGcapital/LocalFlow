@@ -1,0 +1,26 @@
+# macOS and IDE metadata
+.DS_Store
+.build/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+
+# Local build products and app bundles
+build/
+*.app/
+
+# LocalFlow runtime data and speech models
+Audio/
+Models/
+diagnostics.json
+archive.json
+*.caf
+*.m4a
+*.wav
+*.aiff
+
+# Local credentials and generated helper commands
+*.command
+.env
+.env.*
+
