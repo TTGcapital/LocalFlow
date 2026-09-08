@@ -1,6 +1,8 @@
 # LocalFlow 0.2
 
-Personal native macOS dictation and meeting notes. Installed at `~/Applications/LocalFlow.app`.
+Local-first macOS dictation and meeting notes with a floating control, multilingual English/Romanian transcription, and Claude-assisted notes.
+
+This is an experimental personal replacement for Wispr Flow. It is currently distributed as source code for Apple Silicon Macs; there is no signed public release yet.
 
 ## Dictation
 
@@ -30,7 +32,7 @@ Enable **LocalFlow** in System Settings → Privacy & Security → **Accessibili
 
 The app captures the active field, restores focus, tries supported Accessibility text insertion, and falls back to Command V after shortcut modifiers lift. If permission is missing or focus cannot be restored, the transcript stays copied and a visible error explains what to do. Transcription and clipboard copy do not require Accessibility.
 
-This personal build is ad-hoc signed with a stable designated requirement so macOS can retain its Accessibility grant across local rebuilds. If macOS still shows a stale permission, remove the old entry and add the installed app again. No developer signing identity was available on this Mac.
+Local development builds are ad-hoc signed with a stable designated requirement so macOS can retain its Accessibility grant across rebuilds. A public release needs a Developer ID signing identity and notarization.
 
 ## Notetaker and writing tools
 
@@ -50,7 +52,16 @@ Audio conversion and language detection are cancellable, and local inference req
 
 ## Build
 
-Requires macOS 26, Xcode/Command Line Tools, `/opt/homebrew/bin/ffmpeg`, `/opt/homebrew/bin/whisper-cli` (Homebrew `whisper-cpp`), and the large final plus compact live Whisper models in LocalFlow’s data folder. These are installed on this laptop.
+Requires macOS 26, Xcode/Command Line Tools, `ffmpeg`, `whisper-cli` and `whisper-server` from Homebrew `whisper-cpp`, plus the Whisper models stored in `~/Library/Application Support/LocalFlow/Models/`. The current scripts expect Apple Silicon Homebrew at `/opt/homebrew/bin`.
+
+Install the command-line tools with `brew install ffmpeg whisper-cpp`. Download the large-v3-turbo and base quantized models from the [whisper.cpp model repository](https://huggingface.co/ggerganov/whisper.cpp), then place them at:
+
+```text
+~/Library/Application Support/LocalFlow/Models/ggml-large-v3-turbo-q5_0.bin
+~/Library/Application Support/LocalFlow/Models/ggml-base-q5_1.bin
+```
+
+Build and run the local checks:
 
 ```sh
 ./build.sh
@@ -61,6 +72,8 @@ xcrun swiftc -swift-version 5 -parse-as-library Sources/Core.swift Sources/Local
 ```
 
 See VALIDATION.md for checks and manual testing limits. Individual remote-speaker identification, cloud sharing/team accounts, and connector management are not implemented.
+
+The repository does not include recordings, transcripts, local archives, credentials, compiled apps, or model binaries. Choose and add a license before accepting external contributions.
 
 ## Widget, system settings, and insights
 
