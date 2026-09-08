@@ -1,0 +1,60 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build and release (e.g. v0.2.0)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Run offline test suite
+        run: ./scripts/test.sh
+
+      - name: Build the app bundle
+        run: ./build.sh
+
+      - name: Verify the bundle
+        run: |
+          test -x build/LocalFlow.app/Contents/MacOS/LocalFlow
+          plutil -lint build/LocalFlow.app/Contents/Info.plist
+          codesign --verify --verbose build/LocalFlow.app
+
+      - name: Package
+        id: package
+        run: |
+          # ditto preserves the bundle's signature and resource forks; `zip` does not.
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/LocalFlow.app LocalFlow-macOS-Apple-Silicon.zip
+          shasum -a 256 LocalFlow-macOS-Apple-Silicon.zip \
+            | tee LocalFlow-macOS-Apple-Silicon.zip.sha256
+          echo "sha=$(shasum -a 256 LocalFlow-macOS-Apple-Silicon.zip | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+          SHA256: ${{ steps.package.outputs.sha }}
+        run: |
+          gh release create "$TAG" \
+            LocalFlow-macOS-Apple-Silicon.zip \
+            LocalFlow-macOS-Apple-Silicon.zip.sha256 \
+            --title "LocalFlow $TAG" \
+            --generate-notes \
+            --notes "SHA-256: \`$SHA256\`" \
+            || gh release upload "$TAG" \
+              LocalFlow-macOS-Apple-Silicon.zip \
+              LocalFlow-macOS-Apple-Silicon.zip.sha256 --clobber

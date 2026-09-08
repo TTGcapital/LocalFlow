@@ -6,7 +6,16 @@ LocalFlow turns your voice into text in any Mac app. Hold a shortcut, speak, rel
 
 There is no transcription subscription and no account required. Speech recognition runs locally with Whisper on Apple Silicon. Claude is optional and is used only for the writing and meeting features you choose to run.
 
-[![macOS](https://img.shields.io/badge/macOS-26%2B-111827?logo=apple)](https://www.apple.com/macos/) [![Swift](https://img.shields.io/badge/Swift-SwiftUI-F05138?logo=swift&logoColor=white)](https://www.swift.org/) [![Whisper](https://img.shields.io/badge/speech-Whisper.cpp-6b46c1)](https://github.com/ggerganov/whisper.cpp) [![Local first](https://img.shields.io/badge/data-local--first-0f766e)](#privacy)
+[![Download](https://img.shields.io/github/v/release/girzsebastian/LocalFlow?label=download&color=0f766e)](https://github.com/girzsebastian/LocalFlow/releases/latest) [![CI](https://github.com/girzsebastian/LocalFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/girzsebastian/LocalFlow/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![macOS](https://img.shields.io/badge/macOS-26%2B-111827?logo=apple)](https://www.apple.com/macos/) [![Swift](https://img.shields.io/badge/Swift-SwiftUI-F05138?logo=swift&logoColor=white)](https://www.swift.org/) [![Whisper](https://img.shields.io/badge/speech-Whisper.cpp-6b46c1)](https://github.com/ggerganov/whisper.cpp) [![Local first](https://img.shields.io/badge/data-local--first-0f766e)](#privacy) [![Stars](https://img.shields.io/github/stars/girzsebastian/LocalFlow?style=flat&color=eab308)](https://github.com/girzsebastian/LocalFlow/stargazers)
+
+**[⬇ Download for Apple Silicon](https://github.com/girzsebastian/LocalFlow/releases/latest)** · [Build from source](#build-from-source) · [How it works](#how-it-works) · [Contributing](CONTRIBUTING.md)
+
+<!--
+  DEMO SLOT — the single highest-impact thing left in this README.
+  Record ~15s: cursor in a text field, hold the shortcut, speak, release, text appears.
+  Save it to docs/media/demo.gif and replace this comment with:
+  ![LocalFlow dictating into a text field](docs/media/demo.gif)
+-->
 
 ## Why LocalFlow exists
 
@@ -69,7 +78,15 @@ Notetaker stores local audio and transcript segments. Claude is an optional fina
 
 ## Install on macOS
 
-The repository currently builds a local Apple Silicon app. A signed and notarized public release is not available yet.
+The easiest option is the latest Apple Silicon build:
+
+    Download LocalFlow-macOS-Apple-Silicon.zip from the latest release
+    Unzip it and move LocalFlow.app to /Applications
+    Open /Applications/LocalFlow.app
+
+The release is an ad-hoc development build, so macOS may ask you to confirm it under **System Settings → Privacy & Security → Open Anyway**. It does not include the speech models; download those once with the script below. Intel Macs should build from source.
+
+### Build from source
 
 ### 1. Install prerequisites
 
@@ -164,17 +181,25 @@ The local Whisper processes are loading their models. Later phrases reuse the wa
 
 ## Development
 
-    ./build.sh
-    xcrun swiftc -swift-version 5 -parse-as-library Sources/Core.swift Sources/CorrectionSuggestion.swift Sources/LocalProcess.swift Sources/WhisperServer.swift Sources/WhisperTranscription.swift Sources/ShortcutGesture.swift Sources/UsageSummary.swift Sources/MeetingWindowMatcher.swift Tests/Interaction.swift -o build/interaction -framework Speech -framework AVFoundation
-    ./build/interaction
+    ./build.sh        # builds and ad-hoc signs build/LocalFlow.app
+    ./scripts/test.sh  # offline suite: no models, no microphone, no network
 
-See [VALIDATION.md](VALIDATION.md) for the tested flows and known manual checks. Contributions are welcome once a project license is selected.
+Run `./scripts/test.sh` before opening a pull request; CI runs the same script on every push. See [VALIDATION.md](VALIDATION.md) for the tested flows and the manual checks that still need a human, and [CHANGELOG.md](CHANGELOG.md) for what shipped in each release.
 
 ## Status
 
 LocalFlow is an active personal project. The core dictation and Notetaker flows are usable; automatic call-end detection, cloud team accounts, connector management, screen-share hiding, and signed distribution are still planned.
 
+## Contributing
+
+Contributions are welcome and the project is deliberately easy to get running: clone, `./scripts/download-models.sh`, `./build.sh`. The offline test suite is one command and needs no models, microphone, or network:
+
+    ./scripts/test.sh
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for the setup, the code style, and the one rule that is not negotiable — **speech audio never leaves the machine**. Issues tagged [good first issue](https://github.com/girzsebastian/LocalFlow/labels/good%20first%20issue) are scoped small on purpose; Intel Mac support, extra languages, and a Homebrew cask are all open.
+
+Please also read the [Code of Conduct](CODE_OF_CONDUCT.md). For security problems, do not open a public issue — see [SECURITY.md](SECURITY.md).
+
 ## License
 
-No license has been selected yet. Until one is added, the repository is public for inspection and personal testing; reuse and redistribution are not granted by default.
-
+[MIT](LICENSE). Use it, fork it, ship it. If LocalFlow saves you a subscription, a star is a fair trade.

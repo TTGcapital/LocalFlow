@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and test
+    # Apple Silicon runner with the macOS 26 SDK the app targets.
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Show toolchain
+        run: |
+          sw_vers
+          xcrun swift --version
+
+      # Neither of these needs speech models, a microphone, or the network.
+      - name: Run offline test suite
+        run: ./scripts/test.sh
+
+      - name: Build the app bundle
+        run: ./build.sh
+
+      - name: Verify the bundle
+        run: |
+          test -x build/LocalFlow.app/Contents/MacOS/LocalFlow
+          plutil -lint build/LocalFlow.app/Contents/Info.plist
+          codesign --verify --verbose build/LocalFlow.app

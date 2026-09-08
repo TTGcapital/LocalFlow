@@ -1,0 +1,33 @@
+name: Feature request
+description: Suggest something LocalFlow should do
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do
+      description: Describe the situation, not the solution. What does your current workflow look like?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like LocalFlow to do
+    validations:
+      required: true
+  - type: checkboxes
+    id: local-first
+    attributes:
+      label: Local-first check
+      description: >
+        LocalFlow's core promise is that speech audio never leaves the Mac
+        without an explicit user action.
+      options:
+        - label: This can work without sending audio or transcripts off the machine, or it is opt-in and clearly marked.
+          required: true
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Would you like to build it?
+      options:
+        - label: I would be willing to open a pull request for this.

@@ -1,0 +1,79 @@
+name: Bug report
+description: Something in LocalFlow does not work
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. Please do not paste transcripts containing
+        anything private — LocalFlow exists so that text stays yours.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you expect, and what did you get instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Put the cursor in ...
+        2. Hold the shortcut and say ...
+        3. Release
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part
+      options:
+        - Dictation (shortcut, recording, paste)
+        - Transcription accuracy or speed
+        - Notetaker / meeting audio
+        - Floating widget
+        - Settings, dictionary, snippets, styles
+        - Claude features (summaries, transforms, meeting chat)
+        - Build or install
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: LocalFlow version
+      description: From the release you downloaded, or the commit SHA if you built from source.
+      placeholder: "0.2.0, or 445da5b"
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version and Mac model
+      placeholder: "macOS 26.4.1, MacBook Pro M2 Pro"
+    validations:
+      required: true
+  - type: checkboxes
+    id: permissions
+    attributes:
+      label: Permissions granted
+      description: Most dictation issues turn out to be a missing grant.
+      options:
+        - label: Microphone
+        - label: Accessibility (needed for the global shortcut and automatic paste)
+        - label: Screen & System Audio Recording (needed for Notetaker computer audio)
+  - type: dropdown
+    id: language
+    attributes:
+      label: Language mode
+      options:
+        - English
+        - Romanian
+        - Multilingual (English + Romanian)
+        - Not relevant
+  - type: textarea
+    id: logs
+    attributes:
+      label: Anything else
+      description: Console output, screenshots, a recording of the widget. Optional.
