@@ -55,9 +55,15 @@ protocol AudioPlayback: AnyObject {
 /// macOS routes this through ScreenCaptureKit, which is why it needs a screen
 /// recording permission and a dummy video stream. Windows uses WASAPI loopback
 /// and needs neither, so no display or window filter appears in this contract.
+///
+/// The destination is fixed at construction rather than passed to `start`.
+/// That is not a stylistic choice: the capture callback writes samples as they
+/// arrive, so the file has to exist before the stream opens, and a capture
+/// object is bound to one recording for its life. An earlier draft of this
+/// protocol had `start(writingTo:)` and could not be implemented.
 protocol SystemAudioCapture: AnyObject {
-    static var isSupported: Bool { get }
-    func start(writingTo url: URL) async throws
+    init(destination: URL)
+    func start() async throws
     func stop() async throws
 }
 
@@ -88,10 +94,18 @@ protocol AudioDevices {
 
 /// Silences the speakers while dictating so the microphone does not pick up
 /// playback, then restores exactly what was there before.
+///
+/// `@MainActor` because the macOS implementation keeps the saved per-device
+/// state as mutable class properties touched from the UI and from a timer;
+/// without the annotation the conformance does not compile under strict
+/// concurrency. A Windows implementation is free to do less work on the main
+/// thread, but it must satisfy the same isolation.
+@MainActor
 protocol OutputMuting: AnyObject {
     var isEngaged: Bool { get }
     func mute() throws
     /// Re-applies the mute if the default output device changed mid-recording.
+    /// Called on a timer while recording, so it must be cheap and idempotent.
     func refreshForCurrentDevice() throws
     func restore()
 }
@@ -155,12 +169,20 @@ protocol GlobalHotkeys: AnyObject {
     func unregisterAll()
 }
 
+///
+/// A failable initializer rather than a `register` call returning `Bool`: the
+/// hook either exists for the lifetime of the object or was never created, and
+/// macOS cannot install one at all without the Accessibility grant. The caller
+/// falls back to a plain event monitor when this returns nil.
+///
+/// One closure taking `down` rather than separate `onDown`/`onUp` — both
+/// platforms deliver press and release through a single low-level callback
+/// (`CGEventTap` here, `WH_MOUSE_LL` there), and splitting them in the protocol
+/// only forces every implementation to fan one callback into two.
 protocol GlobalMouseShortcut: AnyObject {
-    /// `button` is a zero-based extra-button index (the side buttons). Returns
-    /// false when the OS refuses the hook; the caller then falls back to a
-    /// keyboard chord rather than failing silently.
-    func register(button: Int, onDown: @escaping () -> Void, onUp: @escaping () -> Void) -> Bool
-    func unregister()
+    /// `button` is a zero-based extra-button index (the side buttons).
+    init?(button: Int, action: @escaping @MainActor (Bool) -> Void)
+    func stop()
 }
 
 // MARK: - Other applications

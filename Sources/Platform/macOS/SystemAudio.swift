@@ -38,14 +38,14 @@ enum AudioHardware {
 }
 
 /// Saves exact output state and only restores values that are still set by us.
-@MainActor final class OutputMute {
+@MainActor final class OutputMute: OutputMuting {
     enum Saved { case mute(UInt32); case volume([(UInt32, Float32)]) }
     var saved: [AudioDeviceID: Saved] = [:]
     var lastDevice: AudioDeviceID?
-    var enabled = false
-    func begin() throws { enabled = true; do { try followDevice() } catch { restore(); throw error } }
-    func followDevice() throws {
-        guard enabled, let device = AudioHardware.integer(AudioObjectID(kAudioObjectSystemObject), kAudioHardwarePropertyDefaultOutputDevice), device != 0 else { return }
+    var isEngaged = false
+    func mute() throws { isEngaged = true; do { try refreshForCurrentDevice() } catch { restore(); throw error } }
+    func refreshForCurrentDevice() throws {
+        guard isEngaged, let device = AudioHardware.integer(AudioObjectID(kAudioObjectSystemObject), kAudioHardwarePropertyDefaultOutputDevice), device != 0 else { return }
         guard device != lastDevice else { return }
         lastDevice = device
         if saved[device] != nil { return }
@@ -62,7 +62,7 @@ enum AudioHardware {
         saved[device] = .volume(channels)
     }
     func restore() {
-        enabled = false
+        isEngaged = false
         for (device, state) in saved {
             switch state {
             case .mute(let original):

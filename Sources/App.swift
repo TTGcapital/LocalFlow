@@ -307,7 +307,7 @@ import UniformTypeIdentifiers
                     let meeting = MeetingAudio(destination: root.appendingPathComponent("Audio/\(id)-system.caf"))
                     try await meeting.start(); meetingAudio = meeting
                 }
-                if kind == "Dictation" && preferences.muteWhileDictating != false { try outputMute.begin() }
+                if kind == "Dictation" && preferences.muteWhileDictating != false { try outputMute.mute() }
                 audio.isMeteringEnabled = true
                 guard audio.record() else { throw flowError("Could not start the microphone.") }
                 recorder = audio; activeID = id; started = Date(); recording = true
@@ -323,7 +323,7 @@ import UniformTypeIdentifiers
                 meter = Timer.scheduledTimer(withTimeInterval: 0.07, repeats: true) { [weak self] _ in
                     Task { @MainActor in
                         guard let self, let recorder = self.recorder else { return }
-                        if self.outputMute.enabled { do { try self.outputMute.followDevice() } catch { self.error = error.localizedDescription } }
+                        if self.outputMute.isEngaged { do { try self.outputMute.refreshForCurrentDevice() } catch { self.error = error.localizedDescription } }
                         if kind == "Notetaker", recorder.currentTime >= Double((self.preferences.maxNoteMinutes ?? 120) * 60) { self.stop(); return }
                         recorder.updateMeters()
                         self.audioLevel = max(0, min(1, (recorder.averagePower(forChannel: 0) + 48) / 48))
