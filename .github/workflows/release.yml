@@ -36,12 +36,25 @@ jobs:
       - name: Package
         id: package
         run: |
+          # The .dmg is the install people expect on a Mac: drag onto the
+          # Applications shortcut. The script mounts what it built and verifies
+          # the signature survived, so a broken image fails here, not on a
+          # user's machine.
+          ./scripts/package-dmg.sh
+          mv build/LocalFlow-*.dmg LocalFlow-macOS-Apple-Silicon.dmg
+          mv build/LocalFlow-*.dmg.sha256 LocalFlow-macOS-Apple-Silicon.dmg.sha256 || true
+          shasum -a 256 LocalFlow-macOS-Apple-Silicon.dmg \
+            | tee LocalFlow-macOS-Apple-Silicon.dmg.sha256
+
+          # The zip stays for anyone scripting an install, and for the handful
+          # of setups where mounting a disk image is awkward.
           # ditto preserves the bundle's signature and resource forks; `zip` does not.
           ditto -c -k --sequesterRsrc --keepParent \
             build/LocalFlow.app LocalFlow-macOS-Apple-Silicon.zip
           shasum -a 256 LocalFlow-macOS-Apple-Silicon.zip \
             | tee LocalFlow-macOS-Apple-Silicon.zip.sha256
-          echo "sha=$(shasum -a 256 LocalFlow-macOS-Apple-Silicon.zip | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+          echo "sha=$(shasum -a 256 LocalFlow-macOS-Apple-Silicon.dmg | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
       - name: Publish release
         env:
@@ -50,11 +63,15 @@ jobs:
           SHA256: ${{ steps.package.outputs.sha }}
         run: |
           gh release create "$TAG" \
+            LocalFlow-macOS-Apple-Silicon.dmg \
+            LocalFlow-macOS-Apple-Silicon.dmg.sha256 \
             LocalFlow-macOS-Apple-Silicon.zip \
             LocalFlow-macOS-Apple-Silicon.zip.sha256 \
             --title "LocalFlow $TAG" \
             --generate-notes \
-            --notes "SHA-256: \`$SHA256\`" \
+            --notes "SHA-256 (.dmg): \`$SHA256\`" \
             || gh release upload "$TAG" \
+              LocalFlow-macOS-Apple-Silicon.dmg \
+              LocalFlow-macOS-Apple-Silicon.dmg.sha256 \
               LocalFlow-macOS-Apple-Silicon.zip \
               LocalFlow-macOS-Apple-Silicon.zip.sha256 --clobber

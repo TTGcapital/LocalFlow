@@ -83,9 +83,11 @@ Notetaker stores local audio and transcript segments. Claude is an optional step
 
 The easiest option is the latest Apple Silicon build:
 
-    Download LocalFlow-macOS-Apple-Silicon.zip from the latest release
-    Unzip it and move LocalFlow.app to /Applications
+    Download LocalFlow-macOS-Apple-Silicon.dmg from the latest release
+    Open it and drag LocalFlow onto the Applications shortcut
     Open /Applications/LocalFlow.app
+
+Install it into `/Applications` rather than running it from `~/Downloads` — macOS ties the Accessibility grant to where the app lives, so an app left in the Downloads folder loses its shortcut permission on the next update. A `.zip` of the same build is attached to each release for anyone scripting the install.
 
 The release is an ad-hoc development build, so macOS may ask you to confirm it under **System Settings → Privacy & Security → Open Anyway**. It does not include the speech models; download those once with the script below. Intel Macs should build from source.
 

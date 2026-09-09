@@ -1,5 +1,21 @@
 import Foundation
 
+extension Process {
+    /// Last resort when a child ignores `terminate()`.
+    ///
+    /// On POSIX, `terminate()` sends SIGTERM, which a busy process can ignore —
+    /// whisper-cli mid-inference does — so we escalate to SIGKILL. Windows has
+    /// no signals: `terminate()` there is already `TerminateProcess`, which the
+    /// child cannot refuse, so there is nothing to escalate to.
+    func forceKill() {
+        #if canImport(Darwin) || canImport(Glibc)
+        kill(processIdentifier, SIGKILL)
+        #else
+        terminate()
+        #endif
+    }
+}
+
 /// A child process whose timeout/cancellation completes independently of the child.
 final class LocalProcess: @unchecked Sendable {
     private let lock = NSLock()
@@ -24,7 +40,7 @@ final class LocalProcess: @unchecked Sendable {
                         task.standardInput = FileHandle.nullDevice
                         task.standardOutput = output; task.standardError = output
                         var environment = ProcessInfo.processInfo.environment
-                        environment["PATH"] = "/opt/homebrew/bin:/usr/bin:/bin"
+                        environment["PATH"] = Tools.childProcessPath
                         task.environment = environment
                         self.lock.lock()
                         if self.cancelled { self.lock.unlock(); throw CancellationError() }
@@ -41,9 +57,11 @@ final class LocalProcess: @unchecked Sendable {
                         }
                         if let aborted {
                             if task.isRunning { task.terminate() }
+                            // whisper-cli mid-inference can ignore a polite
+                            // request, so give it a second and then insist.
                             let grace = Date().addingTimeInterval(1)
                             while task.isRunning && Date() < grace { Thread.sleep(forTimeInterval: 0.02) }
-                            if task.isRunning { kill(task.processIdentifier, SIGKILL) }
+                            if task.isRunning { task.forceKill() }
                             self.lock.lock(); self.process = nil; self.lock.unlock()
                             throw aborted
                         }

@@ -14,7 +14,7 @@ actor WhisperServer {
 
     init(model: URL = AppPaths.largeModel, portOffset: Int = 0, audioContext: Int? = nil, usesGPU: Bool = true, detectsOnly: Bool = false) {
         self.model = model
-        self.port = 18_000 + Int(getpid() % 900) + portOffset
+        self.port = 18_000 + Int(ProcessInfo.processInfo.processIdentifier % 900) + portOffset
         self.audioContext = audioContext
         self.usesGPU = usesGPU
         self.detectsOnly = detectsOnly
@@ -39,11 +39,14 @@ actor WhisperServer {
             throw flowError("The multilingual speech model is missing. Re-run LocalFlow setup.")
         }
 
-        let log = FileManager.default.temporaryDirectory.appendingPathComponent("LocalFlow-whisper-server-\(getpid())-\(port).log")
+        let log = FileManager.default.temporaryDirectory.appendingPathComponent("LocalFlow-whisper-server-\(ProcessInfo.processInfo.processIdentifier)-\(port).log")
         FileManager.default.createFile(atPath: log.path, contents: nil)
         let handle = try FileHandle(forWritingTo: log)
         let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/opt/homebrew/bin/whisper-server")
+        guard let executable = Tools.url(for: "whisper-server") else {
+            throw flowError("whisper-server was not found. Install it with: brew install whisper-cpp")
+        }
+        task.executableURL = executable
         var arguments = [
             "-m", model.path, "--host", "127.0.0.1", "--port", String(port),
             "-t", "6", "-bs", "1", "-bo", "1", "-nf", "-sns", "-l", "en"
@@ -56,7 +59,7 @@ actor WhisperServer {
         task.standardOutput = handle
         task.standardError = handle
         var environment = ProcessInfo.processInfo.environment
-        environment["PATH"] = "/opt/homebrew/bin:/usr/bin:/bin"
+        environment["PATH"] = Tools.childProcessPath
         task.environment = environment
         try task.run()
         process = task; logHandle = handle; logURL = log
@@ -142,7 +145,7 @@ actor WhisperServer {
             process.terminate()
             let deadline = Date().addingTimeInterval(1)
             while process.isRunning, Date() < deadline { Thread.sleep(forTimeInterval: 0.02) }
-            if process.isRunning { kill(process.processIdentifier, SIGKILL) }
+            if process.isRunning { process.forceKill() }
         }
         process = nil
         try? logHandle?.close(); logHandle = nil
