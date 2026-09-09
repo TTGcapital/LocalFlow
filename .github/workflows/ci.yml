@@ -16,7 +16,7 @@ jobs:
     # Apple Silicon runner with the macOS 26 SDK the app targets.
     runs-on: macos-26
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Show toolchain
         run: |
@@ -44,7 +44,7 @@ jobs:
     name: Portable core on Windows
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: compnerd/gha-setup-swift@v0.4.1
         with:
