@@ -2,8 +2,7 @@ import Foundation
 import AVFoundation
 
 actor LiveMeetingTranscription {
-    static let model = FileManager.default.homeDirectoryForCurrentUser
-        .appendingPathComponent("Library/Application Support/LocalFlow/Models/ggml-base-q5_1.bin")
+    static let model = AppPaths.baseModel
 
     enum Result { case speech(String), silence }
 

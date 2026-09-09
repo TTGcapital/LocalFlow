@@ -1,6 +1,6 @@
 import AppKit
 
-final class MouseShortcut {
+final class MouseShortcut: GlobalMouseShortcut {
     let button: Int64
     let action: @MainActor (Bool) -> Void
     var tap: CFMachPort?

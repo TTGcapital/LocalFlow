@@ -10,7 +10,7 @@
 
 <!-- Be specific and be honest about what you did NOT check. -->
 
-- [ ] `./scripts/test.sh` passes
+- [ ] `swift test` passes
 - [ ] Built with `./build.sh` and ran the app
 - Mac and macOS version:
 - Manually verified:

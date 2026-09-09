@@ -2,7 +2,7 @@ import Foundation
 import ScreenCaptureKit
 import AVFoundation
 
-final class MeetingAudio: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked Sendable {
+final class MeetingAudio: NSObject, SystemAudioCapture, AudioMixdown, SCStreamOutput, SCStreamDelegate, @unchecked Sendable {
     private var stream: SCStream?
     private var file: AVAudioFile?
     private let queue = DispatchQueue(label: "LocalFlow.meetingAudio")

@@ -23,9 +23,9 @@ jobs:
           sw_vers
           xcrun swift --version
 
-      # Neither of these needs speech models, a microphone, or the network.
-      - name: Run offline test suite
-        run: ./scripts/test.sh
+      # Needs no speech models, microphone, or network.
+      - name: Test the portable core
+        run: swift test
 
       - name: Build the app bundle
         run: ./build.sh
@@ -35,3 +35,27 @@ jobs:
           test -x build/LocalFlow.app/Contents/MacOS/LocalFlow
           plutil -lint build/LocalFlow.app/Contents/Info.plist
           codesign --verify --verbose build/LocalFlow.app
+
+  core-windows:
+    # LocalFlow has no Windows app yet. What this job proves is that the
+    # portable half stays portable: the moment someone reaches for an Apple
+    # framework inside Sources/Core, this build goes red on the pull request
+    # rather than months later when a Windows port is attempted.
+    name: Portable core on Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: compnerd/gha-setup-swift@v0.4.1
+        with:
+          branch: swift-6.1-release
+          tag: 6.1-RELEASE
+
+      - name: Show toolchain
+        run: swift --version
+
+      - name: Build the portable core
+        run: swift build
+
+      - name: Test the portable core
+        run: swift test

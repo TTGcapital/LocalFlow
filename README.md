@@ -83,9 +83,11 @@ Notetaker stores local audio and transcript segments. Claude is an optional step
 
 The easiest option is the latest Apple Silicon build:
 
-    Download LocalFlow-macOS-Apple-Silicon.zip from the latest release
-    Unzip it and move LocalFlow.app to /Applications
+    Download LocalFlow-macOS-Apple-Silicon.dmg from the latest release
+    Open it and drag LocalFlow onto the Applications shortcut
     Open /Applications/LocalFlow.app
+
+Install it into `/Applications` rather than running it from `~/Downloads` — macOS ties the Accessibility grant to where the app lives, so an app left in the Downloads folder loses its shortcut permission on the next update. A `.zip` of the same build is attached to each release for anyone scripting the install.
 
 The release is an ad-hoc development build, so macOS may ask you to confirm it under **System Settings → Privacy & Security → Open Anyway**. It does not include the speech models; download those once with the script below. Intel Macs should build from source.
 
@@ -143,16 +145,28 @@ Claude is an optional separate path. It uses the existing **claude** CLI login f
 
 ## Project layout
 
+The code is split into a portable core and a macOS platform layer. **`Sources/Core` compiles with nothing but Foundation** — CI builds it on a Windows runner so that stays true.
+
+    Sources/Core/Models.swift                 Entry, Preferences, Archive, text expansion
+    Sources/Core/PlatformCapabilities.swift   The protocols an OS layer must implement
+    Sources/Core/SpeechRouting.swift          Language detection and silence chunking
+    Sources/Core/WhisperServer.swift          Localhost Whisper model process
+    Sources/Core/AppPaths.swift               Every filesystem location, in one place
+
+    Sources/Platform/macOS/PasteDestination.swift   Focused-app text insertion
+    Sources/Platform/macOS/MeetingAudio.swift       ScreenCaptureKit system audio
+    Sources/Platform/macOS/SystemAudio.swift        CoreAudio devices and output mute
+
     Sources/App.swift                         App state and recording lifecycle
     Sources/FloatingControl.swift             Floating widget and waveform
-    Sources/WhisperTranscription.swift        Audio preparation and language routing
-    Sources/WhisperServer.swift               Localhost Whisper model process
-    Sources/StreamingDictationTranscription.swift  Pause-based phrase pipeline
+    Sources/WhisperTranscription.swift        Audio preparation and transcription
     Sources/LiveNotetaker.swift               Live transcript, summary, and meeting chat
-    Sources/PreferencesView.swift             Settings and configuration
-    Sources/PasteDestination.swift             Focused-app text insertion
-    Tests/Interaction.swift                   Shortcut, routing, archive, and process checks
+
+    Tests/Core/CoreTests.swift                Portable suite — runs on every platform
+    Package.swift                             Builds and tests the core with SwiftPM
     build.sh                                  Native macOS app build and ad-hoc signing
+
+Windows support is [issue #7](https://github.com/girzsebastian/LocalFlow/issues/7). The core and the protocol contract are in place; the Windows implementation is open.
 
 ## Performance
 
@@ -185,9 +199,9 @@ The local Whisper processes are loading their models. Later phrases reuse the wa
 ## Development
 
     ./build.sh        # builds and ad-hoc signs build/LocalFlow.app
-    ./scripts/test.sh  # offline suite: no models, no microphone, no network
+    swift test        # test suite: no models, no microphone, no network
 
-Run `./scripts/test.sh` before opening a pull request; CI runs the same script on every push. See [VALIDATION.md](VALIDATION.md) for the tested flows and the manual checks that still need a human, and [CHANGELOG.md](CHANGELOG.md) for what shipped in each release.
+Run `swift test` before opening a pull request; CI runs it on macOS and again on Windows. See [VALIDATION.md](VALIDATION.md) for the tested flows and the manual checks that still need a human, and [CHANGELOG.md](CHANGELOG.md) for what shipped in each release.
 
 ## Status
 
@@ -197,7 +211,7 @@ LocalFlow is an active personal project. The core dictation and Notetaker flows 
 
 Contributions are welcome and the project is deliberately easy to get running: clone, `./scripts/download-models.sh`, `./build.sh`. The offline test suite is one command and needs no models, microphone, or network:
 
-    ./scripts/test.sh
+    swift test
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) for the setup, the code style, and the one rule that is not negotiable — **speech audio never leaves the machine**. Issues tagged [good first issue](https://github.com/girzsebastian/LocalFlow/labels/good%20first%20issue) are scoped small on purpose; Intel Mac support, extra languages, and a Homebrew cask are all open.
 

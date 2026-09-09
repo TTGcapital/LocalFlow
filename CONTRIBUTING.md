@@ -40,25 +40,49 @@ signature to a stable designated requirement so macOS does not drop your
 Accessibility grant on every rebuild — if you change the signing line, expect to
 re-grant Accessibility after each build.
 
+## Where code goes
+
+    Sources/Core/            portable — Foundation only, no Apple frameworks
+    Sources/Platform/macOS/  AppKit, Carbon, AVFoundation, ScreenCaptureKit, CoreAudio
+    Sources/                 the macOS app itself: SwiftUI views and app state
+
+**`Sources/Core` must keep compiling with nothing but Foundation.** CI builds it
+on a Windows runner, so an `import AppKit` there turns your pull request red.
+That is deliberate: the boundary is what makes a Windows port possible at all.
+
+Importing only Foundation is not sufficient — a file can import Foundation and
+still reference an Apple-backed type from elsewhere. Check with:
+
+    swift build
+
+`Sources/Core/PlatformCapabilities.swift` declares the protocols the OS layer
+implements. If you need something new from the operating system, add a protocol
+there with **no platform types in the signature**, then implement it under
+`Platform/macOS`. If a signature needs an Apple type, the abstraction is wrong.
+
 ## Test
 
-    ./scripts/test.sh
+    swift test
 
-This is the offline suite. It needs no models, no microphone, and no network, it
-runs in seconds, and **it must pass before you open a pull request.** CI runs the
-same script on every push.
+One suite, and it runs everywhere Swift does. It needs no models, no microphone
+and no network, it finishes in under a second, and **it must pass before you
+open a pull request.** CI runs it on macOS and again on Windows.
+
+There used to be a second, macOS-only suite. Every assertion in it tested
+portable logic, so it could never fail on the platform it was guarding against;
+it now lives in `Tests/Core/CoreTests.swift` and runs on both.
 
 The remaining suites under `Tests/` exercise real audio, real models, or the
 Claude CLI, so they are run by hand:
 
-    xcrun swiftc -swift-version 5 -parse-as-library Sources/*.swift Tests/Multilingual.swift -o build/multilingual -framework SwiftUI -framework AppKit -framework AVFoundation -framework Speech -framework Carbon -framework ScreenCaptureKit -framework CoreAudio -framework ServiceManagement -framework EventKit -framework UserNotifications
+    xcrun swiftc -swift-version 5 -parse-as-library Sources/*.swift Sources/Core/*.swift Sources/Platform/macOS/*.swift Tests/Multilingual.swift -o build/multilingual -framework SwiftUI -framework AppKit -framework AVFoundation -framework Speech -framework Carbon -framework ScreenCaptureKit -framework CoreAudio -framework ServiceManagement -framework EventKit -framework UserNotifications
     ./build/multilingual
 
 To check the Claude paths against a real signed-in `claude` CLI, build the smoke
 suite without the app entry point and run `./build/smoke claude` for meeting
 insights or `./build/smoke cleanup` for dictation cleanup:
 
-    xcrun swiftc -swift-version 5 -parse-as-library Sources/Core.swift Sources/LocalProcess.swift Sources/WhisperServer.swift Sources/WhisperTranscription.swift Sources/MeetingAudio.swift Tests/Smoke.swift -o build/smoke -framework AVFoundation -framework Speech
+    xcrun swiftc -swift-version 5 -parse-as-library Sources/Core/*.swift Sources/Platform/macOS/MeetingAudio.swift Sources/WhisperTranscription.swift Tests/Smoke.swift -o build/smoke -framework AVFoundation -framework Speech
     ./build/smoke cleanup
 
 Anything that can only be checked by a human — permission prompts, the floating
@@ -70,7 +94,8 @@ Please add what you verified there, and be honest about what you did *not* check
 Match the file you are editing. In practice that means:
 
 - Swift 5 language mode, four-space indentation, no trailing whitespace.
-- Types and files stay in the flat `Sources/` layout — one clear concern per file.
+- One clear concern per file, and the file goes in the folder that matches how
+  portable it is — see **Where code goes** above.
 - Comments explain *why*, not *what*. The existing comment in `build.sh` about
   the designated requirement is the model to follow: it records a non-obvious
   reason a future reader would otherwise undo.
@@ -82,7 +107,7 @@ Match the file you are editing. In practice that means:
 
 1. Branch off `main`.
 2. Keep the change focused. One behaviour per PR.
-3. Run `./scripts/test.sh`.
+3. Run `swift test`.
 4. Describe what you changed, and say explicitly what you tested on which Mac
    and which macOS version.
 5. If your change touches permissions, audio capture, or anything that leaves
