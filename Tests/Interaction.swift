@@ -69,5 +69,28 @@ import Foundation
         let roundTrip = try JSONDecoder().decode(Entry.self, from: JSONEncoder().encode(cleaned))
         precondition(roundTrip.rawTranscript == raw && roundTrip.transcript == "Send it by Thursday.")
         print("PASS: Claude cleanup guard rejects empty, prefaced, refused and runaway output; cleanup is off by default; literal transcript survives archive round-trip")
+
+        // The shortcut has to survive leaving macOS: Carbon keycodes are
+        // meaningless elsewhere, so the label is parsed into a portable chord.
+        let space = KeyChord(displayLabel: "⌃⇧Space")
+        precondition(space == KeyChord(key: "Space", control: true, shift: true))
+        let all = KeyChord(displayLabel: "⌃⌥⇧⌘M")
+        precondition(all == KeyChord(key: "M", control: true, alt: true, shift: true, command: true))
+        precondition(KeyChord(displayLabel: "⌥F13")?.key == "F13")
+        // A bare key is not a global shortcut, and "Key 42" is a raw macOS
+        // keycode the recorder could not name — neither may become a chord.
+        precondition(KeyChord(displayLabel: "M") == nil)
+        precondition(KeyChord(displayLabel: "⌃Key 42") == nil)
+        precondition(KeyChord(displayLabel: "⌃⇧") == nil)
+        // An archive written before KeyChord existed decodes with no chord, and
+        // one written now survives the round trip.
+        let old = "{\"locale\":\"auto\",\"snippets\":\"\",\"dictionary\":\"\",\"style\":\"x\",\"scratchpad\":\"\",\"autoInsights\":false,\"autoPaste\":true,\"captureSystem\":false,\"transformer\":\"x\",\"shortcutLabel\":\"⌃⇧Space\"}"
+        let decodedOld = try JSONDecoder().decode(Preferences.self, from: Data(old.utf8))
+        precondition(decodedOld.shortcutChord == nil && decodedOld.shortcutLabel == "⌃⇧Space")
+        var withChord = Preferences()
+        withChord.shortcutChord = all
+        let chordRoundTrip = try JSONDecoder().decode(Preferences.self, from: JSONEncoder().encode(withChord))
+        precondition(chordRoundTrip.shortcutChord == all)
+        print("PASS: shortcut label parses into a portable chord, rejects unusable labels, and old archives still decode")
     }
 }

@@ -42,7 +42,7 @@ import UniformTypeIdentifiers
     @Published var started: Date?
     @Published var languages: [String] = ["en-US"]
     @Published var claudeStatus = "Check connection in Settings"
-    let root = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/LocalFlow")
+    let root = AppPaths.root
     let whisperServer = WhisperServer()
     let languageServer = WhisperServer(model: WhisperTranscription.detectorModel, portOffset: 1, audioContext: 256, detectsOnly: true)
     lazy var speech = WhisperTranscription(server: whisperServer, detector: languageServer)
@@ -84,6 +84,13 @@ import UniformTypeIdentifiers
         if preferences.notetakerConfigured == nil {
             preferences.captureSystem = true
             preferences.notetakerConfigured = true
+            save()
+        }
+        // Back-fill the portable shortcut for archives written before KeyChord
+        // existed. The Carbon fields stay authoritative on this build.
+        if preferences.shortcutChord == nil, preferences.shortcutMouse == nil,
+           let chord = KeyChord(displayLabel: preferences.shortcutLabel ?? "⌃⇧Space") {
+            preferences.shortcutChord = chord
             save()
         }
         notifications.start(store: self)
@@ -232,6 +239,8 @@ import UniformTypeIdentifiers
     func setShortcut(code: UInt32? = nil, modifiers: UInt32? = nil, mouse: Int? = nil, label: String) {
         preferences.shortcutCode = code; preferences.shortcutModifiers = modifiers
         preferences.shortcutMouse = mouse; preferences.shortcutLabel = label
+        // Recorded in both forms: Carbon drives this build, the chord travels.
+        preferences.shortcutChord = mouse == nil ? KeyChord(displayLabel: label) : nil
         save(); registerShortcut()
     }
 

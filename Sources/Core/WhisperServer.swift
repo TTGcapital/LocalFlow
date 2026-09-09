@@ -12,7 +12,7 @@ actor WhisperServer {
     private var logHandle: FileHandle?
     private var logURL: URL?
 
-    init(model: URL = WhisperTranscription.model, portOffset: Int = 0, audioContext: Int? = nil, usesGPU: Bool = true, detectsOnly: Bool = false) {
+    init(model: URL = AppPaths.largeModel, portOffset: Int = 0, audioContext: Int? = nil, usesGPU: Bool = true, detectsOnly: Bool = false) {
         self.model = model
         self.port = 18_000 + Int(getpid() % 900) + portOffset
         self.audioContext = audioContext

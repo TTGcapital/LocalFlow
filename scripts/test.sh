@@ -5,14 +5,18 @@ set -euo pipefail
 cd "${0:A:h}/.."
 mkdir -p build
 xcrun swiftc -swift-version 5 -parse-as-library \
-  Sources/Core.swift \
-  Sources/CorrectionSuggestion.swift \
-  Sources/LocalProcess.swift \
-  Sources/WhisperServer.swift \
+  Sources/Core/Models.swift \
+  Sources/Core/PlatformCapabilities.swift \
+  Sources/Core/SpeechRouting.swift \
+  Sources/Core/AppPaths.swift \
+  Sources/Core/ClaudeBridge.swift \
+  Sources/Core/CorrectionSuggestion.swift \
+  Sources/Core/LocalProcess.swift \
+  Sources/Core/WhisperServer.swift \
   Sources/WhisperTranscription.swift \
-  Sources/ShortcutGesture.swift \
-  Sources/UsageSummary.swift \
-  Sources/MeetingWindowMatcher.swift \
+  Sources/Core/ShortcutGesture.swift \
+  Sources/Core/UsageSummary.swift \
+  Sources/Core/MeetingWindowMatcher.swift \
   Tests/Interaction.swift \
   -o build/interaction \
   -framework Speech -framework AVFoundation
