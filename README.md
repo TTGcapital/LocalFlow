@@ -163,7 +163,6 @@ The code is split into a portable core and a macOS platform layer. **`Sources/Co
     Sources/LiveNotetaker.swift               Live transcript, summary, and meeting chat
 
     Tests/Core/CoreTests.swift                Portable suite — runs on every platform
-    Tests/Interaction.swift                   Shortcut, routing, archive, process checks
     Package.swift                             Builds and tests the core with SwiftPM
     build.sh                                  Native macOS app build and ad-hoc signing
 
@@ -200,9 +199,9 @@ The local Whisper processes are loading their models. Later phrases reuse the wa
 ## Development
 
     ./build.sh        # builds and ad-hoc signs build/LocalFlow.app
-    ./scripts/test.sh  # offline suite: no models, no microphone, no network
+    swift test        # test suite: no models, no microphone, no network
 
-Run `./scripts/test.sh` before opening a pull request; CI runs the same script on every push. See [VALIDATION.md](VALIDATION.md) for the tested flows and the manual checks that still need a human, and [CHANGELOG.md](CHANGELOG.md) for what shipped in each release.
+Run `swift test` before opening a pull request; CI runs it on macOS and again on Windows. See [VALIDATION.md](VALIDATION.md) for the tested flows and the manual checks that still need a human, and [CHANGELOG.md](CHANGELOG.md) for what shipped in each release.
 
 ## Status
 
@@ -212,7 +211,7 @@ LocalFlow is an active personal project. The core dictation and Notetaker flows 
 
 Contributions are welcome and the project is deliberately easy to get running: clone, `./scripts/download-models.sh`, `./build.sh`. The offline test suite is one command and needs no models, microphone, or network:
 
-    ./scripts/test.sh
+    swift test
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) for the setup, the code style, and the one rule that is not negotiable — **speech audio never leaves the machine**. Issues tagged [good first issue](https://github.com/girzsebastian/LocalFlow/labels/good%20first%20issue) are scoped small on purpose; Intel Mac support, extra languages, and a Homebrew cask are all open.
 

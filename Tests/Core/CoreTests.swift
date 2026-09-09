@@ -27,6 +27,21 @@ final class CoreTests: XCTestCase {
 
     // MARK: Dictation cleanup guard
 
+    func testCleanupAcceptsAGenuineRewrite() {
+        let raw = "send it by Tuesday, oh no, sorry, by Thursday. I want to, um, I want to review it first"
+        XCTAssertEqual(DictationCleanup.accept(raw: raw, cleaned: "Send it by Thursday. I want to review it first."),
+                       "Send it by Thursday. I want to review it first.")
+        XCTAssertEqual(DictationCleanup.accept(raw: raw, cleaned: "  Send it by Thursday.\n"),
+                       "Send it by Thursday.",
+                       "surrounding whitespace is trimmed rather than pasted")
+        XCTAssertNil(DictationCleanup.accept(raw: raw, cleaned: ""))
+    }
+
+    func testCleanupIsOffUntilTheUserAsksForIt() {
+        XCTAssertNil(Preferences().cleanDictation,
+                     "sending dictation to Claude must stay opt-in")
+    }
+
     func testCleanupRejectsAnswersInsteadOfRewrites() {
         let raw = "um so I think we should uh ship on Thursday no wait Friday"
         XCTAssertNil(DictationCleanup.accept(raw: raw, cleaned: "   "))
@@ -110,5 +125,141 @@ final class CoreTests: XCTestCase {
         let chunks = SpeechSegmentation.chunks(duration: 30, silences: [(10, 10.2)], maximum: 24)
         XCTAssertEqual(chunks.count, 2, "30s with no usable boundary still splits only to respect the maximum")
         XCTAssertEqual(chunks.first?.end, 24)
+    }
+
+    func testSilenceSplitsAtTheMiddleOfThePause() {
+        XCTAssertEqual(SpeechSegmentation.chunks(duration: 12, silences: [(5, 6)]),
+                       [SpeechChunk(start: 0, end: 5.5), SpeechChunk(start: 5.5, end: 12)])
+        XCTAssertEqual(SpeechSegmentation.chunks(duration: 8, silences: [(1, 1.5)]).count, 1,
+                       "a boundary too close to the start would leave a clip too short to detect")
+    }
+
+    // MARK: The shortcut state machine
+    //
+    // Hold-to-talk, double-tap to latch, and the release timer. This is the
+    // heart of the dictation trigger and it is pure logic, so a Windows build
+    // must not be able to break it without a test noticing.
+
+    func testHoldAndReleaseIgnoresKeyRepeat() {
+        var gesture = ShortcutGesture()
+        XCTAssertEqual(gesture.down(at: 0), [.start])
+        XCTAssertTrue(gesture.down(at: 0.1).isEmpty, "auto-repeat must not restart the recording")
+        XCTAssertEqual(gesture.up(at: 1), [.stop])
+        XCTAssertTrue(gesture.up(at: 1.1).isEmpty, "a second release must not stop twice")
+    }
+
+    func testDoubleTapLatchesAndTheNextPressStops() {
+        var gesture = ShortcutGesture()
+        XCTAssertEqual(gesture.down(at: 2), [.start])
+        XCTAssertEqual(gesture.up(at: 2.1), [.scheduleRelease],
+                       "a quick release might still become a double tap, so stopping waits")
+        XCTAssertEqual(gesture.down(at: 2.25), [.cancelRelease, .latch])
+        XCTAssertTrue(gesture.up(at: 2.3).isEmpty, "releasing a latched recording keeps it running")
+        XCTAssertTrue(gesture.releaseExpired().isEmpty, "the cancelled timer must not fire")
+        XCTAssertEqual(gesture.down(at: 5), [.stop])
+    }
+
+    func testASingleTapStopsWhenTheDoubleTapWindowExpires() {
+        var gesture = ShortcutGesture()
+        _ = gesture.down(at: 6)
+        _ = gesture.up(at: 6.1)
+        XCTAssertEqual(gesture.releaseExpired(), [.stop])
+    }
+
+    // MARK: Language routing
+
+    func testDetectionsAreParsedFromTheWhisperLog() {
+        let parsed = LanguageRouting.detections(in: """
+            auto-detected language: ro (p = 0.616654)
+            auto-detected language: en (p = 0.91)
+            """)
+        XCTAssertEqual(parsed, [LanguageDetection(language: "ro", confidence: 0.616654),
+                                LanguageDetection(language: "en", confidence: 0.91)])
+    }
+
+    func testLowConfidenceRomanianWithLatinTextRetriesInEnglish() {
+        let parsed = LanguageRouting.detections(in: "auto-detected language: ro (p = 0.616654)")
+        XCTAssertTrue(LanguageRouting.needsEnglishRetry(parsed[0], text: "platformă pe care"))
+        XCTAssertFalse(LanguageRouting.needsEnglishRetry(LanguageDetection(language: "ro", confidence: 0.99),
+                                                         text: "Bună ziua"),
+                       "a confident detection is trusted")
+        XCTAssertTrue(LanguageRouting.needsEnglishRetry(nil, text: "hello 대에르"),
+                      "an unsupported script means the model wandered off")
+    }
+
+    // MARK: Corrections learned from edits
+
+    func testEditedWordsBecomeDictionarySuggestionsButAppendedTextDoesNot() {
+        XCTAssertEqual(
+            CorrectionWordDiff.suggestion(baseline: "Send this to chersid today",
+                                          edited: "Send this to Kerrsid today",
+                                          insertedRange: NSRange(location: 0, length: 26)),
+            CorrectionSuggestion(original: "chersid", corrected: "Kerrsid"))
+        XCTAssertNil(
+            CorrectionWordDiff.suggestion(baseline: "hello", edited: "hello world",
+                                          insertedRange: NSRange(location: 0, length: 5)),
+            "continuing to type is not a correction of what was dictated")
+    }
+
+    // MARK: Usage
+
+    func testUsageExcludesNotesAndNeverInventsADuration() {
+        let summary = UsageSummary(entries: [
+            Entry(title: "One", kind: "Dictation", transcript: "one two three four", duration: 2),
+            Entry(title: "Note", kind: "Notetaker", transcript: "not counted"),
+            Entry(title: "Old", kind: "Dictation", transcript: "five six"),
+        ])
+        XCTAssertEqual(summary.totalWords, 6, "meeting notes are not dictated words")
+        XCTAssertEqual(summary.wordsPerMinute, 120, "only the entry with a measured duration counts")
+        XCTAssertNil(UsageSummary(entries: []).wordsPerMinute)
+    }
+
+    // MARK: Child processes
+
+    // The commands differ per platform; the behaviour being tested does not.
+    private var sleepCommand: (URL, [String]) {
+        #if os(Windows)
+        (URL(fileURLWithPath: "C:/Windows/System32/cmd.exe"), ["/c", "ping", "-n", "11", "127.0.0.1"])
+        #else
+        (URL(fileURLWithPath: "/bin/sleep"), ["10"])
+        #endif
+    }
+
+    private var echoCommand: (URL, [String]) {
+        #if os(Windows)
+        (URL(fileURLWithPath: "C:/Windows/System32/cmd.exe"), ["/c", "echo", "process works"])
+        #else
+        (URL(fileURLWithPath: "/bin/echo"), ["process works"])
+        #endif
+    }
+
+    func testTimeoutReturnsWithoutWaitingForTheChild() async throws {
+        let started = Date()
+        let (tool, arguments) = sleepCommand
+        do {
+            _ = try await LocalProcess().run(tool, arguments: arguments, timeout: 0.2)
+            XCTFail("the timeout did not fire")
+        } catch {
+            XCTAssertLessThan(Date().timeIntervalSince(started), 3,
+                              "the caller must not be held hostage by a child that ignores SIGTERM")
+        }
+    }
+
+    func testCancellationPropagatesAndLaterRunsStillWork() async throws {
+        let (tool, arguments) = sleepCommand
+        let child = Task { try await LocalProcess().run(tool, arguments: arguments, timeout: 30) }
+        try await Task.sleep(for: .milliseconds(100))
+        child.cancel()
+        do {
+            _ = try await child.value
+            XCTFail("cancellation did not fire")
+        } catch is CancellationError {
+        } catch {
+            XCTFail("expected CancellationError, got \(error)")
+        }
+
+        let (echo, echoArguments) = echoCommand
+        let output = try await LocalProcess().run(echo, arguments: echoArguments, timeout: 5)
+        XCTAssertTrue(output.contains("process works"), "a cancelled run must not poison the next one")
     }
 }

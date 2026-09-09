@@ -23,10 +23,7 @@ jobs:
           sw_vers
           xcrun swift --version
 
-      # None of these needs speech models, a microphone, or the network.
-      - name: Run offline test suite
-        run: ./scripts/test.sh
-
+      # Needs no speech models, microphone, or network.
       - name: Test the portable core
         run: swift test
 

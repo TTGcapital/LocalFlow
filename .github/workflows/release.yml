@@ -21,8 +21,8 @@ jobs:
         with:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
-      - name: Run offline test suite
-        run: ./scripts/test.sh
+      - name: Test the portable core
+        run: swift test
 
       - name: Build the app bundle
         run: ./build.sh
