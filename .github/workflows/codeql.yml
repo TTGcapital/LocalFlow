@@ -15,6 +15,12 @@ on:
     - cron: "31 4 * * 1"
   workflow_dispatch:
 
+# Swift analysis has to build the app, so a run takes minutes on a macOS
+# runner. Without this, every push stacks another one that nobody will read.
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   security-events: write

@@ -10,11 +10,24 @@ import Foundation
 //
 // Rule for contributors: if a signature below mentions a platform type, the
 // abstraction is wrong. Fix the signature, not the implementation.
+//
+// HOW MUCH TO TRUST EACH PROTOCOL
+//
+// Marked `VALIDATED` — a macOS type conforms, so the shape is known to be
+// implementable. Everything else is `PROVISIONAL`: written from reading the
+// code, never compiled against it, and therefore a guess.
+//
+// That distinction is not pedantry. Of the first three protocols anyone tried
+// to conform, all three were wrong: one had the wrong lifecycle, one was
+// missing @MainActor, one split a callback the OS delivers as one. Assume a
+// PROVISIONAL signature will need changing, and change it rather than
+// contorting the implementation to fit.
 
 // MARK: - Permissions
 
 enum PermissionState { case granted, denied, notDetermined }
 
+/// PROVISIONAL.
 protocol MicrophonePermission {
     var microphoneState: PermissionState { get }
     func requestMicrophoneAccess() async -> Bool
@@ -23,6 +36,7 @@ protocol MicrophonePermission {
 /// Permission to observe global input and write text into other applications.
 /// macOS calls this Accessibility; Windows grants it without a prompt, so the
 /// Windows implementation reports `.granted` and never calls back.
+/// PROVISIONAL.
 protocol AutomationPermission {
     var isAutomationTrusted: Bool { get }
     func promptForAutomationTrust()
@@ -32,6 +46,8 @@ protocol AutomationPermission {
 
 // MARK: - Audio capture and playback
 
+/// PROVISIONAL. AVAudioRecorder is still a stored property on Store; nothing
+/// implements this yet. See issue #7.
 protocol MicrophoneRecorder: AnyObject {
     func start(writingTo url: URL) throws
     /// Returns the final duration in seconds, or nil if nothing was recorded.
@@ -45,6 +61,7 @@ protocol MicrophoneRecorder: AnyObject {
     func currentLevel() -> Float
 }
 
+/// PROVISIONAL.
 protocol AudioPlayback: AnyObject {
     func play(fileAt url: URL) throws
     func stop()
@@ -61,18 +78,21 @@ protocol AudioPlayback: AnyObject {
 /// arrive, so the file has to exist before the stream opens, and a capture
 /// object is bound to one recording for its life. An earlier draft of this
 /// protocol had `start(writingTo:)` and could not be implemented.
+/// VALIDATED — MeetingAudio conforms.
 protocol SystemAudioCapture: AnyObject {
     init(destination: URL)
     func start() async throws
     func stop() async throws
 }
 
+/// VALIDATED — MeetingAudio conforms.
 protocol AudioMixdown {
     /// Combines the microphone and system tracks into one file for the archive.
     static func mix(microphone: URL, system: URL, destination: URL) async throws
 }
 
 /// Reading and slicing recorded audio, for chunked transcription.
+/// PROVISIONAL.
 protocol PCMFileTools {
     func duration(of url: URL) throws -> Double
     func extractRange(source: URL, destination: URL, start: Double, end: Double) throws
@@ -86,6 +106,8 @@ struct AudioDevice: Identifiable, Equatable {
     let name: String
 }
 
+/// PROVISIONAL. AudioHardware is a static enum keyed by AudioDeviceID, so a
+/// conformance needs an adapter that maps those UInt32s to the String ids here.
 protocol AudioDevices {
     var inputs: [AudioDevice] { get }
     var defaultInputID: String { get }
@@ -100,6 +122,7 @@ protocol AudioDevices {
 /// without the annotation the conformance does not compile under strict
 /// concurrency. A Windows implementation is free to do less work on the main
 /// thread, but it must satisfy the same isolation.
+/// VALIDATED — OutputMute conforms.
 @MainActor
 protocol OutputMuting: AnyObject {
     var isEngaged: Bool { get }
@@ -162,6 +185,7 @@ struct KeyChord: Codable, Equatable {
     }
 }
 
+/// PROVISIONAL. The Carbon registration still lives inline in App.swift.
 protocol GlobalHotkeys: AnyObject {
     /// Throws when another application already owns the chord.
     func register(id: String, chord: KeyChord, onDown: @escaping () -> Void, onUp: @escaping () -> Void) throws
@@ -179,6 +203,7 @@ protocol GlobalHotkeys: AnyObject {
 /// platforms deliver press and release through a single low-level callback
 /// (`CGEventTap` here, `WH_MOUSE_LL` there), and splitting them in the protocol
 /// only forces every implementation to fan one callback into two.
+/// VALIDATED — MouseShortcut conforms.
 protocol GlobalMouseShortcut: AnyObject {
     /// `button` is a zero-based extra-button index (the side buttons).
     init?(button: Int, action: @escaping @MainActor (Bool) -> Void)
@@ -193,6 +218,7 @@ struct ForegroundApp: Equatable {
     let isSelf: Bool
 }
 
+/// PROVISIONAL.
 protocol ForegroundAppTracker: AnyObject {
     var current: ForegroundApp? { get }
     /// The most recent foreground application that was not LocalFlow itself.
@@ -210,11 +236,16 @@ struct FocusedWindow: Equatable {
 
 /// Used only to guess that a call is on screen. Titles are inspected and
 /// discarded; implementations must not persist them.
+/// PROVISIONAL.
 protocol FocusedWindowInspector {
     func focusedWindow() -> FocusedWindow?
 }
 
 /// A text field in another application, captured at the moment dictation began.
+/// PROVISIONAL. `currentText()` below was invented — PasteDestination has no
+/// such method — and the real snapshot returns an NSRange rather than the
+/// character offsets here. The offsets are the right call, but somebody has
+/// to write the conversion. PasteDestination is also @MainActor.
 protocol TextInsertionTarget {
     var appDisplayName: String? { get }
     /// Focuses the captured application and inserts the text. Returns a
@@ -227,25 +258,21 @@ protocol TextInsertionTarget {
     func insertionSnapshot(for inserted: String) async -> (text: String, start: Int, length: Int)?
 }
 
+/// PROVISIONAL.
 protocol TextInsertionService {
     func captureFocusedTarget(inApp appID: String?) -> TextInsertionTarget?
 }
 
+/// PROVISIONAL. NSPasteboard is used inline in App.swift.
 protocol Clipboard {
     func setText(_ text: String)
 }
 
 // MARK: - Shell and tools
 
-/// Locates the external binaries LocalFlow shells out to. macOS looks in
-/// Homebrew; Windows would look in PATH or a bundled `tools` folder.
-protocol ExternalTools {
-    /// `tool` is a bare name such as "ffmpeg" or "whisper-cli".
-    func url(for tool: String) throws -> URL
-}
-
 enum SystemSetting { case automation, microphone, notifications, screenRecording }
 
+/// PROVISIONAL.
 protocol ShellLauncher {
     /// Opens an interactive terminal so the user can finish a login flow that
     /// needs a real TTY.
@@ -261,6 +288,10 @@ struct NotificationAction {
     let title: String
 }
 
+/// PROVISIONAL, and known to be wrong. MeetingNotifications takes `Store`
+/// directly, registers its categories inside `start`, and has no action
+/// callback — so this shape cannot be conformed without first untangling the
+/// implementation from the app's model. Redesign it against the code.
 protocol SystemNotifications: AnyObject {
     func requestPermission() async -> Bool
     func registerCategory(id: String, actions: [NotificationAction])
@@ -268,15 +299,18 @@ protocol SystemNotifications: AnyObject {
     var onAction: ((_ notificationID: String, _ actionID: String?, _ body: String, _ categoryID: String) -> Void)? { get set }
 }
 
+/// PROVISIONAL.
 protocol LaunchAtLogin {
     var isEnabled: Bool { get }
     func setEnabled(_ on: Bool) async throws
 }
 
+/// PROVISIONAL.
 protocol SoundEffects {
     func playCompletionSound()
 }
 
+/// PROVISIONAL.
 protocol FileDialogs {
     func pickFilesToOpen(extensions: [String], allowsMultiple: Bool) async -> [URL]
     func pickSaveLocation(suggestedName: String) async -> URL?
