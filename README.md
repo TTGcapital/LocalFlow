@@ -143,16 +143,29 @@ Claude is an optional separate path. It uses the existing **claude** CLI login f
 
 ## Project layout
 
+The code is split into a portable core and a macOS platform layer. **`Sources/Core` compiles with nothing but Foundation** — CI builds it on a Windows runner so that stays true.
+
+    Sources/Core/Models.swift                 Entry, Preferences, Archive, text expansion
+    Sources/Core/PlatformCapabilities.swift   The protocols an OS layer must implement
+    Sources/Core/SpeechRouting.swift          Language detection and silence chunking
+    Sources/Core/WhisperServer.swift          Localhost Whisper model process
+    Sources/Core/AppPaths.swift               Every filesystem location, in one place
+
+    Sources/Platform/macOS/PasteDestination.swift   Focused-app text insertion
+    Sources/Platform/macOS/MeetingAudio.swift       ScreenCaptureKit system audio
+    Sources/Platform/macOS/SystemAudio.swift        CoreAudio devices and output mute
+
     Sources/App.swift                         App state and recording lifecycle
     Sources/FloatingControl.swift             Floating widget and waveform
-    Sources/WhisperTranscription.swift        Audio preparation and language routing
-    Sources/WhisperServer.swift               Localhost Whisper model process
-    Sources/StreamingDictationTranscription.swift  Pause-based phrase pipeline
+    Sources/WhisperTranscription.swift        Audio preparation and transcription
     Sources/LiveNotetaker.swift               Live transcript, summary, and meeting chat
-    Sources/PreferencesView.swift             Settings and configuration
-    Sources/PasteDestination.swift             Focused-app text insertion
-    Tests/Interaction.swift                   Shortcut, routing, archive, and process checks
+
+    Tests/Core/CoreTests.swift                Portable suite — runs on every platform
+    Tests/Interaction.swift                   Shortcut, routing, archive, process checks
+    Package.swift                             Builds and tests the core with SwiftPM
     build.sh                                  Native macOS app build and ad-hoc signing
+
+Windows support is [issue #7](https://github.com/girzsebastian/LocalFlow/issues/7). The core and the protocol contract are in place; the Windows implementation is open.
 
 ## Performance
 

@@ -40,13 +40,37 @@ signature to a stable designated requirement so macOS does not drop your
 Accessibility grant on every rebuild — if you change the signing line, expect to
 re-grant Accessibility after each build.
 
+## Where code goes
+
+    Sources/Core/            portable — Foundation only, no Apple frameworks
+    Sources/Platform/macOS/  AppKit, Carbon, AVFoundation, ScreenCaptureKit, CoreAudio
+    Sources/                 the macOS app itself: SwiftUI views and app state
+
+**`Sources/Core` must keep compiling with nothing but Foundation.** CI builds it
+on a Windows runner, so an `import AppKit` there turns your pull request red.
+That is deliberate: the boundary is what makes a Windows port possible at all.
+
+Importing only Foundation is not sufficient — a file can import Foundation and
+still reference an Apple-backed type from elsewhere. Check with:
+
+    swift build
+
+`Sources/Core/PlatformCapabilities.swift` declares the protocols the OS layer
+implements. If you need something new from the operating system, add a protocol
+there with **no platform types in the signature**, then implement it under
+`Platform/macOS`. If a signature needs an Apple type, the abstraction is wrong.
+
 ## Test
 
-    ./scripts/test.sh
+    ./scripts/test.sh   # macOS suite: shortcuts, routing, archive, processes
+    swift test          # portable suite: runs on every platform, including Windows
 
-This is the offline suite. It needs no models, no microphone, and no network, it
-runs in seconds, and **it must pass before you open a pull request.** CI runs the
-same script on every push.
+Neither needs models, a microphone, or the network, both run in seconds, and
+**both must pass before you open a pull request.** CI runs them on every push,
+plus `swift test` again on Windows.
+
+New tests for portable logic belong in `Tests/Core/CoreTests.swift` so they run
+everywhere. `Tests/Interaction.swift` is for what needs the macOS build.
 
 The remaining suites under `Tests/` exercise real audio, real models, or the
 Claude CLI, so they are run by hand:
