@@ -1,0 +1,23 @@
+version: 2
+
+# LocalFlow deliberately has no package dependencies — it builds against system
+# frameworks and shells out to Homebrew binaries. So there is no npm, pip or
+# SwiftPM ecosystem to watch here.
+#
+# What does drift is the set of GitHub Actions the workflows pin. Those pins are
+# the supply chain that actually exists for this repository: an action runs with
+# access to the release token, so a stale or compromised pin matters more than a
+# transitive library would.
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    labels: [build]
+    commit-message:
+      prefix: "ci"
+    groups:
+      # One pull request for routine bumps rather than four.
+      actions:
+        patterns: ["*"]
+        update-types: [minor, patch]
