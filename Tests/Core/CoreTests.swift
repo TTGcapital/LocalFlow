@@ -5,10 +5,9 @@ import XCTest
 /// supports, including Windows, which is the point: they are how a Windows
 /// build is verified before a Windows UI exists.
 ///
-/// `Tests/Interaction.swift` still covers the same ground on macOS as part of
-/// the app build. That overlap is deliberate for now — see issue #7. As the
-/// platform layer grows, the shared assertions belong here and the macOS suite
-/// should keep only what needs AppKit.
+/// This is the only test suite. There was a second, macOS-only one; every
+/// assertion in it tested portable logic, so it could never fail on the platform
+/// it was meant to guard. See issue #10.
 final class CoreTests: XCTestCase {
 
     // MARK: Text expansion
@@ -212,6 +211,85 @@ final class CoreTests: XCTestCase {
         XCTAssertEqual(summary.totalWords, 6, "meeting notes are not dictated words")
         XCTAssertEqual(summary.wordsPerMinute, 120, "only the entry with a measured duration counts")
         XCTAssertNil(UsageSummary(entries: []).wordsPerMinute)
+    }
+
+    // MARK: Platform paths
+    //
+    // These exercise the Windows layout from a Mac. Without that, the Windows
+    // branches would only ever be compiled by CI and never actually run by
+    // anyone until someone tried the app on Windows.
+
+    private var fakeHome: URL { URL(fileURLWithPath: "/Users/test") }
+
+    func testWindowsDataLivesUnderAppData() {
+        // Asserted as a relationship rather than an absolute string: this runs
+        // on macOS, where URL(fileURLWithPath:) reads "C:/..." as relative
+        // because it has no leading slash. The logic under test is "append
+        // LocalFlow to %APPDATA%", not how Foundation parses a drive letter.
+        let appData = "/fake/AppData/Roaming"
+        let root = AppPaths.root(platform: .windows,
+                                 environment: ["APPDATA": appData],
+                                 home: fakeHome)
+        XCTAssertEqual(root.lastPathComponent, "LocalFlow")
+        XCTAssertEqual(root.deletingLastPathComponent().path, appData)
+        XCTAssertFalse(root.path.contains("Library"), "the macOS layout must not leak in")
+    }
+
+    func testWindowsFallsBackWhenAppDataIsMissing() {
+        // A service or a stripped environment may not set %APPDATA%; guessing
+        // the conventional location beats writing to the wrong place.
+        let root = AppPaths.root(platform: .windows, environment: [:], home: fakeHome)
+        XCTAssertEqual(root.path, "/Users/test/AppData/Roaming/LocalFlow")
+    }
+
+    func testMacDataStaysWhereItAlwaysWas() {
+        let root = AppPaths.root(platform: .apple, environment: ["APPDATA": "ignored"], home: fakeHome)
+        XCTAssertEqual(root.path, "/Users/test/Library/Application Support/LocalFlow",
+                       "%APPDATA% must not leak into the macOS layout and move an existing library")
+    }
+
+    func testClaudeIsLookedForWhereEachPlatformInstallsIt() {
+        XCTAssertEqual(
+            AppPaths.claudeExecutable(platform: .apple, environment: [:], home: fakeHome).path,
+            "/Users/test/.local/bin/claude")
+        let windows = AppPaths.claudeExecutable(platform: .windows,
+                                                environment: ["APPDATA": "/fake/AppData/Roaming"],
+                                                home: fakeHome)
+        XCTAssertEqual(windows.path, "/fake/AppData/Roaming/npm/claude.cmd",
+                       "npm installs the CLI as a .cmd shim, not a bare executable")
+    }
+
+    // MARK: Locating external tools
+
+    func testMacSearchesBothHomebrewPrefixes() {
+        let directories = Tools.directories(platform: .apple, environment: ["PATH": "/custom/bin"])
+        XCTAssertEqual(directories.first, "/opt/homebrew/bin", "Apple Silicon Homebrew stays first")
+        XCTAssertTrue(directories.contains("/usr/local/bin"),
+                      "Intel Homebrew must be searched too — this is issue #1")
+        XCTAssertTrue(directories.contains("/custom/bin"), "a user's own PATH is honoured")
+    }
+
+    func testWindowsSplitsPathOnSemicolons() {
+        let directories = Tools.directories(
+            platform: .windows,
+            environment: ["PATH": "C:/tools;C:/Windows/System32"])
+        XCTAssertEqual(directories, ["C:/tools", "C:/Windows/System32"],
+                       "splitting on ':' would cut every Windows path after the drive letter")
+    }
+
+    func testChildProcessPathUsesEachPlatformsSeparator() {
+        XCTAssertTrue(Tools.childPath(platform: .windows,
+                                             environment: ["PATH": "C:/a;C:/b"]).contains(";"))
+        XCTAssertFalse(Tools.childPath(platform: .windows,
+                                              environment: ["PATH": "C:/a;C:/b"]).contains(":;"))
+        XCTAssertTrue(Tools.childPath(platform: .apple, environment: ["PATH": "/a"]).contains(":"))
+    }
+
+    func testWindowsLooksForExecutableExtensions() {
+        XCTAssertEqual(Tools.candidateNames(for: "ffmpeg", platform: .windows),
+                       ["ffmpeg.exe", "ffmpeg.cmd", "ffmpeg"],
+                       ".cmd matters because npm-installed tools are shims, not executables")
+        XCTAssertEqual(Tools.candidateNames(for: "ffmpeg", platform: .apple), ["ffmpeg"])
     }
 
     // MARK: Child processes

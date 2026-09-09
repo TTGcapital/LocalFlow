@@ -6,18 +6,60 @@ import Foundation
 /// always used; a Windows build resolves the same names under `%APPDATA%`.
 /// Nothing outside this type should build a path from the home directory — that
 /// is what made the original code macOS-only in five separate files.
+///
+/// The resolution is written as a function of `(platform, environment, home)`
+/// rather than as `#if` blocks around the values, so the Windows layout can be
+/// tested from a Mac. Code inside `#if os(Windows)` that only ever compiles on
+/// a Windows CI runner is code nobody has actually run.
 enum AppPaths {
-    /// Root for models, audio, the archive and the Claude working directory.
-    static let root: URL = {
+    enum Platform {
+        case apple
+        case windows
+    }
+
+    static var current: Platform {
         #if os(Windows)
-        let base = ProcessInfo.processInfo.environment["APPDATA"].map(URL.init(fileURLWithPath:))
-            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("AppData/Roaming")
-        return base.appendingPathComponent("LocalFlow")
+        return .windows
         #else
-        return FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/LocalFlow")
+        return .apple
         #endif
-    }()
+    }
+
+    private static var environment: [String: String] { ProcessInfo.processInfo.environment }
+    private static var home: URL { FileManager.default.homeDirectoryForCurrentUser }
+
+    // MARK: Resolution
+
+    static func root(platform: Platform, environment: [String: String], home: URL) -> URL {
+        switch platform {
+        case .windows:
+            // %APPDATA% is roaming application data. Falling back to the literal
+            // path matters: a service or a stripped environment may not set it.
+            let base = environment["APPDATA"].map(URL.init(fileURLWithPath:))
+                ?? home.appendingPathComponent("AppData/Roaming")
+            return base.appendingPathComponent("LocalFlow")
+        case .apple:
+            return home.appendingPathComponent("Library/Application Support/LocalFlow")
+        }
+    }
+
+    /// The `claude` CLI. Installed per user on both platforms, under different
+    /// names and in different places.
+    static func claudeExecutable(platform: Platform, environment: [String: String], home: URL) -> URL {
+        switch platform {
+        case .windows:
+            let appData = environment["APPDATA"].map(URL.init(fileURLWithPath:))
+                ?? home.appendingPathComponent("AppData/Roaming")
+            return appData.appendingPathComponent("npm/claude.cmd")
+        case .apple:
+            return home.appendingPathComponent(".local/bin/claude")
+        }
+    }
+
+    // MARK: The paths the app uses
+
+    static var root: URL { root(platform: current, environment: environment, home: home) }
+    static var claudeExecutable: URL { claudeExecutable(platform: current, environment: environment, home: home) }
 
     static var models: URL { root.appendingPathComponent("Models") }
     static var claudeWorkingDirectory: URL { root.appendingPathComponent("Claude") }
@@ -25,16 +67,4 @@ enum AppPaths {
     /// Whisper weights, downloaded once by `scripts/download-models.sh`.
     static var largeModel: URL { models.appendingPathComponent("ggml-large-v3-turbo-q5_0.bin") }
     static var baseModel: URL { models.appendingPathComponent("ggml-base-q5_1.bin") }
-
-    /// The `claude` CLI. Installed per user on both platforms, under different
-    /// names: the npm global bin on Windows, `~/.local/bin` on macOS.
-    static var claudeExecutable: URL {
-        #if os(Windows)
-        let appData = ProcessInfo.processInfo.environment["APPDATA"].map(URL.init(fileURLWithPath:))
-            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("AppData/Roaming")
-        return appData.appendingPathComponent("npm/claude.cmd")
-        #else
-        return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".local/bin/claude")
-        #endif
-    }
 }
