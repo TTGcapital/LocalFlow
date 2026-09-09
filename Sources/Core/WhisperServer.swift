@@ -1,4 +1,9 @@
 import Foundation
+// URLSession and URLRequest live in Foundation on Apple platforms but in
+// FoundationNetworking everywhere else, including Windows.
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 /// Keeps the large Whisper model in memory and serves phrase requests only on
 /// localhost. Reusing one model process removes the startup cost at every pause.
