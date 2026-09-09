@@ -54,8 +54,11 @@ protocol AutomationPermission {
 
 // MARK: - Audio capture and playback
 
-/// PROVISIONAL. AVAudioRecorder is still a stored property on Store; nothing
-/// implements this yet. See issue #7.
+/// VALIDATED — MacMicrophoneRecorder conforms.
+///
+/// `@MainActor` for the same reason as the rest: metering is read from a UI
+/// timer, and Swift 6 rejects the nonisolated conformance.
+@MainActor
 protocol MicrophoneRecorder: AnyObject {
     func start(writingTo url: URL) throws
     /// Returns the final duration in seconds, or nil if nothing was recorded.

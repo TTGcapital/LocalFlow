@@ -145,3 +145,51 @@ struct MacAudioDevices: AudioDevices {
                              title: title)
     }
 }
+
+/// The microphone, behind `MicrophoneRecorder`.
+///
+/// The format is LocalFlow's choice rather than the caller's: 48 kHz mono
+/// 16-bit linear PCM is what whisper.cpp wants, and letting a caller pick would
+/// only invite a mismatch further down the pipeline.
+@MainActor final class MacMicrophoneRecorder: MicrophoneRecorder {
+    private var recorder: AVAudioRecorder?
+
+    func start(writingTo url: URL) throws {
+        let settings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatLinearPCM,
+            AVSampleRateKey: 48000,
+            AVNumberOfChannelsKey: 1,
+            AVLinearPCMBitDepthKey: 16,
+            AVLinearPCMIsFloatKey: false,
+            AVLinearPCMIsBigEndianKey: false,
+        ]
+        let audio = try AVAudioRecorder(url: url, settings: settings)
+        audio.isMeteringEnabled = true
+        guard audio.record() else { throw flowError("Could not start the microphone.") }
+        recorder = audio
+    }
+
+    /// Reads the duration before stopping: `AVAudioRecorder.currentTime` drops
+    /// to zero once the recorder stops, and the caller needs the length for the
+    /// library entry.
+    func stop() -> Double? {
+        guard let recorder else { return nil }
+        let duration = recorder.currentTime
+        recorder.stop()
+        self.recorder = nil
+        return duration
+    }
+
+    var isRecording: Bool { recorder?.isRecording ?? false }
+
+    var elapsed: Double { recorder?.currentTime ?? 0 }
+
+    /// Converts CoreAudio's decibel reading to 0...1 so callers never see
+    /// decibels. -48 dB is treated as silence, which matches what the waveform
+    /// and the voice-activity threshold were tuned against.
+    func currentLevel() -> Float {
+        guard let recorder else { return 0 }
+        recorder.updateMeters()
+        return max(0, min(1, (recorder.averagePower(forChannel: 0) + 48) / 48))
+    }
+}
