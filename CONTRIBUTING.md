@@ -139,7 +139,27 @@ text stays yours.
 
 Do not open a public issue for a security problem. See [SECURITY.md](SECURITY.md).
 
-## License
+## License and the CLA
 
-By contributing, you agree that your contributions are licensed under the
-[MIT License](LICENSE).
+LocalFlow is [MIT](LICENSE) and the application stays free and open.
+
+Before your first pull request is merged you will be asked to sign
+[CLA.md](CLA.md), by posting one comment that a bot gives you. You sign once and
+it covers everything you contribute afterwards.
+
+**You keep the copyright to everything you write.** The agreement grants the
+project a licence, including the right to distribute contributions under terms
+other than MIT. That matters because server-backed features — syncing your
+dictionary between machines, shared team vocabularies — may one day be offered
+under different terms to fund the work, and that needs permission from every
+copyright holder. Collected up front it costs one reply; collected two years and
+twenty contributors later it is not collectable at all.
+
+Nothing you contribute can be removed from the MIT-licensed version. What is
+public stays public under MIT, permanently.
+
+**Note for the maintainer:** the bot only sees pull requests. A patch applied by
+hand from an issue, an email or a fork bypasses it entirely and lands unsigned
+code in the history — which is exactly the hole the agreement exists to close.
+Route contributions through pull requests, or collect the signature before
+committing.
