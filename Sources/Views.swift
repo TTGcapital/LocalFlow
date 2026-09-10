@@ -19,7 +19,9 @@ struct ContentView: View {
                 }
                 Spacer()
                 Label("On-device transcription", systemImage: "lock.shield").font(.caption).foregroundStyle(.secondary)
-                Text("Personal preview · 0.2").font(.caption2).foregroundStyle(.tertiary)
+                // Third place the version was hardcoded, and the only one a user
+                // ever sees. Read it from the bundle so it cannot drift again.
+                Text("Personal preview · \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "")").font(.caption2).foregroundStyle(.tertiary)
             }.padding(18).frame(width: 225).background(Color(nsColor: .controlBackgroundColor))
             Divider()
             VStack(alignment: .leading, spacing: 0) {
