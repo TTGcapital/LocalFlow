@@ -31,7 +31,7 @@ jobs:
     # Swift analysis has to build the code, so it needs the macOS 26 SDK.
     runs-on: macos-26
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - uses: github/codeql-action/init@v3
         with:
