@@ -15,7 +15,7 @@ struct ContentView: View {
                 ForEach(pages, id: \.0) { page in
                     Button { s.page = page.0; s.selection = nil } label: {
                         Label(page.0, systemImage: page.1).font(.system(size: 14, weight: .medium)).frame(maxWidth: .infinity, alignment: .leading).padding(11).background(s.page == page.0 ? Color.mint.opacity(0.13) : hoveredPage == page.0 ? Color.primary.opacity(0.06) : .clear, in: RoundedRectangle(cornerRadius: 9)).contentShape(Rectangle()).onHover { hoveredPage = $0 ? page.0 : nil }
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(.plain).focusable()
                 }
                 Spacer()
                 Label("On-device transcription", systemImage: "lock.shield").font(.caption).foregroundStyle(.secondary)
