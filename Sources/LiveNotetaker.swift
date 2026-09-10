@@ -11,7 +11,7 @@ extension Store {
             var micOffset = 0.0, systemOffset = 0.0
             do { try await Task.sleep(for: .seconds(6)) } catch { return }
             while !Task.isCancelled, recording, activeID == id {
-                let captured = max(0, (recorder?.currentTime ?? 0) - 0.4)
+                let captured = max(0, (recorder?.elapsed ?? 0) - 0.4)
                 let hints = preferences.dictionary.split(separator: "\n").map {
                     String($0).components(separatedBy: "=>").last?.trimmingCharacters(in: .whitespaces) ?? ""
                 }.filter { !$0.isEmpty }

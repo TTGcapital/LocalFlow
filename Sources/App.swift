@@ -59,7 +59,7 @@ import UniformTypeIdentifiers
     var mouseMonitor: Any?
     var localMouseMonitor: Any?
     var meetingAudio: MeetingAudio?
-    var recorder: AVAudioRecorder?
+    var recorder: MicrophoneRecorder?
     var player: AVAudioPlayer?
     var activeID: UUID?
     var target: PasteDestination?
@@ -299,17 +299,17 @@ import UniformTypeIdentifiers
                 let id = UUID()
                 let fileName = kind == "Notetaker" ? "\(id)-mic.caf" : "\(id)-dictation.caf"
                 let url = root.appendingPathComponent("Audio/\(fileName)")
-                let settings: [String: Any] = [AVFormatIDKey: kAudioFormatLinearPCM, AVSampleRateKey: 48000, AVNumberOfChannelsKey: 1,
-                                               AVLinearPCMBitDepthKey: 16, AVLinearPCMIsFloatKey: false, AVLinearPCMIsBigEndianKey: false]
-                let audio = try AVAudioRecorder(url: url, settings: settings)
+                let audio = MacMicrophoneRecorder()
                 if kind == "Notetaker" && preferences.captureSystem {
                     status = "Starting meeting audio capture…"
                     let meeting = MeetingAudio(destination: root.appendingPathComponent("Audio/\(id)-system.caf"))
                     try await meeting.start(); meetingAudio = meeting
                 }
+                // Mute before the microphone opens, so it never records playback.
+                // A throw from start() lands in the catch below, which restores
+                // the output and stops meeting capture.
                 if kind == "Dictation" && preferences.muteWhileDictating != false { try outputMute.mute() }
-                audio.isMeteringEnabled = true
-                guard audio.record() else { throw flowError("Could not start the microphone.") }
+                try audio.start(writingTo: url)
                 recorder = audio; activeID = id; started = Date(); recording = true
                 Task {
                     try? await languageServer.prepare()
@@ -324,10 +324,9 @@ import UniformTypeIdentifiers
                     Task { @MainActor in
                         guard let self, let recorder = self.recorder else { return }
                         if self.outputMute.isEngaged { do { try self.outputMute.refreshForCurrentDevice() } catch { self.error = error.localizedDescription } }
-                        if kind == "Notetaker", recorder.currentTime >= Double((self.preferences.maxNoteMinutes ?? 120) * 60) { self.stop(); return }
-                        recorder.updateMeters()
-                        self.audioLevel = max(0, min(1, (recorder.averagePower(forChannel: 0) + 48) / 48))
-                        if kind == "Dictation", self.audioLevel > 0.12 { self.lastDictationVoiceTime = recorder.currentTime }
+                        if kind == "Notetaker", recorder.elapsed >= Double((self.preferences.maxNoteMinutes ?? 120) * 60) { self.stop(); return }
+                        self.audioLevel = recorder.currentLevel()
+                        if kind == "Dictation", self.audioLevel > 0.12 { self.lastDictationVoiceTime = recorder.elapsed }
                     }
                 }
                 busy = false; startingRecording = false; activityStart = nil
@@ -352,8 +351,8 @@ import UniformTypeIdentifiers
             target = PasteDestination.capture(application: frontmost)
         }
         meter?.invalidate(); meter = nil; audioLevel = 0
-        let duration = recorder?.currentTime
-        recorder?.stop(); recorder = nil; recording = false; started = nil
+        let duration = recorder?.stop()
+        recorder = nil; recording = false; started = nil
         guard let id = activeID else { return }; activeID = nil
         update(id) { $0.duration = duration; $0.applicationName = target?.application.localizedName }
         if let meeting = meetingAudio {
@@ -397,7 +396,7 @@ import UniformTypeIdentifiers
                 catch { return }
 
                 guard let recorder, recorder.isRecording else { return }
-                let now = recorder.currentTime
+                let now = recorder.elapsed
                 let voiceEnd = lastDictationVoiceTime
                 // Wait for a real phrase followed by a natural pause. A little
                 // trailing room avoids clipping the final consonant.
@@ -567,7 +566,7 @@ import UniformTypeIdentifiers
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         Store.instance?.outputMute.restore()
-        Store.instance?.recorder?.stop()
+        _ = Store.instance?.recorder?.stop()
         Store.instance?.save()
     }
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }

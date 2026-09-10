@@ -27,7 +27,11 @@ import Foundation
 
 enum PermissionState { case granted, denied, notDetermined }
 
-/// PROVISIONAL.
+/// VALIDATED.
+/// `@MainActor`: every implementation of this reaches for a UI-thread API
+/// (AppKit here, the Win32 message loop on Windows), and Swift 6 rejects a
+/// nonisolated conformance that crosses into main-actor code.
+@MainActor
 protocol MicrophonePermission {
     var microphoneState: PermissionState { get }
     func requestMicrophoneAccess() async -> Bool
@@ -36,7 +40,11 @@ protocol MicrophonePermission {
 /// Permission to observe global input and write text into other applications.
 /// macOS calls this Accessibility; Windows grants it without a prompt, so the
 /// Windows implementation reports `.granted` and never calls back.
-/// PROVISIONAL.
+/// VALIDATED.
+/// `@MainActor`: every implementation of this reaches for a UI-thread API
+/// (AppKit here, the Win32 message loop on Windows), and Swift 6 rejects a
+/// nonisolated conformance that crosses into main-actor code.
+@MainActor
 protocol AutomationPermission {
     var isAutomationTrusted: Bool { get }
     func promptForAutomationTrust()
@@ -46,8 +54,11 @@ protocol AutomationPermission {
 
 // MARK: - Audio capture and playback
 
-/// PROVISIONAL. AVAudioRecorder is still a stored property on Store; nothing
-/// implements this yet. See issue #7.
+/// VALIDATED — MacMicrophoneRecorder conforms.
+///
+/// `@MainActor` for the same reason as the rest: metering is read from a UI
+/// timer, and Swift 6 rejects the nonisolated conformance.
+@MainActor
 protocol MicrophoneRecorder: AnyObject {
     func start(writingTo url: URL) throws
     /// Returns the final duration in seconds, or nil if nothing was recorded.
@@ -106,8 +117,7 @@ struct AudioDevice: Identifiable, Equatable {
     let name: String
 }
 
-/// PROVISIONAL. AudioHardware is a static enum keyed by AudioDeviceID, so a
-/// conformance needs an adapter that maps those UInt32s to the String ids here.
+/// VALIDATED — MacAudioDevices conforms, adapting CoreAudio's UInt32 ids.
 protocol AudioDevices {
     var inputs: [AudioDevice] { get }
     var defaultInputID: String { get }
@@ -236,7 +246,11 @@ struct FocusedWindow: Equatable {
 
 /// Used only to guess that a call is on screen. Titles are inspected and
 /// discarded; implementations must not persist them.
-/// PROVISIONAL.
+/// VALIDATED.
+/// `@MainActor`: every implementation of this reaches for a UI-thread API
+/// (AppKit here, the Win32 message loop on Windows), and Swift 6 rejects a
+/// nonisolated conformance that crosses into main-actor code.
+@MainActor
 protocol FocusedWindowInspector {
     func focusedWindow() -> FocusedWindow?
 }
@@ -264,6 +278,10 @@ protocol TextInsertionService {
 }
 
 /// PROVISIONAL. NSPasteboard is used inline in App.swift.
+/// `@MainActor`: every implementation of this reaches for a UI-thread API
+/// (AppKit here, the Win32 message loop on Windows), and Swift 6 rejects a
+/// nonisolated conformance that crosses into main-actor code.
+@MainActor
 protocol Clipboard {
     func setText(_ text: String)
 }
@@ -272,7 +290,11 @@ protocol Clipboard {
 
 enum SystemSetting { case automation, microphone, notifications, screenRecording }
 
-/// PROVISIONAL.
+/// VALIDATED.
+/// `@MainActor`: every implementation of this reaches for a UI-thread API
+/// (AppKit here, the Win32 message loop on Windows), and Swift 6 rejects a
+/// nonisolated conformance that crosses into main-actor code.
+@MainActor
 protocol ShellLauncher {
     /// Opens an interactive terminal so the user can finish a login flow that
     /// needs a real TTY.
@@ -299,13 +321,21 @@ protocol SystemNotifications: AnyObject {
     var onAction: ((_ notificationID: String, _ actionID: String?, _ body: String, _ categoryID: String) -> Void)? { get set }
 }
 
-/// PROVISIONAL.
+/// VALIDATED.
+/// `@MainActor`: every implementation of this reaches for a UI-thread API
+/// (AppKit here, the Win32 message loop on Windows), and Swift 6 rejects a
+/// nonisolated conformance that crosses into main-actor code.
+@MainActor
 protocol LaunchAtLogin {
     var isEnabled: Bool { get }
     func setEnabled(_ on: Bool) async throws
 }
 
-/// PROVISIONAL.
+/// VALIDATED.
+/// `@MainActor`: every implementation of this reaches for a UI-thread API
+/// (AppKit here, the Win32 message loop on Windows), and Swift 6 rejects a
+/// nonisolated conformance that crosses into main-actor code.
+@MainActor
 protocol SoundEffects {
     func playCompletionSound()
 }
