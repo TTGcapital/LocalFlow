@@ -92,7 +92,10 @@ struct FloatingView: View {
         Group {
             if appearance.collapsed {
                 Capsule().fill(Color.gray.opacity(0.55)).frame(width: 5, height: 38)
-                    .frame(width: 10, height: 48).help("LocalFlow · move here to dictate")
+                    .frame(width: 10, height: 48)
+                    .help("LocalFlow · move here to dictate")
+                    .accessibilityLabel("LocalFlow")
+                    .accessibilityValue("Idle")
             } else {
                 controls.frame(width: s.recording || s.busy || s.error != nil || s.widgetNotice != nil || s.correctionSuggestion != nil ? 280 : 48, height: 184, alignment: .leading)
             }
@@ -106,19 +109,36 @@ struct FloatingView: View {
                     Button("Multilingual · English + Romanian") { s.preferences.locale = "auto"; s.save() }
                     Button("English") { s.preferences.locale = "en-US"; s.save() }
                     Button("Română") { s.preferences.locale = "ro-RO"; s.save() }
-                } label: { Image(systemName: "globe").font(.system(size: 17)).foregroundStyle(.mint).frame(width: 28, height: 22) }.menuStyle(.borderlessButton).menuIndicator(.hidden).frame(width: 34, height: 30).help("Spoken language")
+                } label: { Image(systemName: "globe").font(.system(size: 17)).foregroundStyle(.mint).frame(width: 28, height: 22) }
+                    .accessibilityLabel("Spoken language")
+                    .accessibilityHint("Choose the language used for dictation")
+                    .menuStyle(.borderlessButton).menuIndicator(.hidden).frame(width: 34, height: 30).help("Spoken language")
 
                 Button { s.toggle(kind: "Dictation", fromHotkey: true) } label: {
                     Image(systemName: s.recording ? "stop.fill" : "mic.fill").foregroundStyle(s.recording ? Color.red : .white).frame(width: 34, height: 34).background(s.recording ? Color.red.opacity(0.12) : .white.opacity(0.08), in: Circle())
-                }.help(s.recording ? "Stop recording" : "Dictate · \(s.shortcutName)").disabled(s.busy)
-                Button { s.toggle(kind: "Notetaker") } label: { Image(systemName: "record.circle").foregroundStyle(.white).frame(width: 34, height: 32) }.help("New note · ⌥M").disabled(s.recording || s.busy)
-                Button { s.showPage("Scratchpad") } label: { Image(systemName: "square.and.pencil").foregroundStyle(.white.opacity(0.8)).frame(width: 34, height: 30) }.help("Open scratchpad")
+                }
+                    .help(s.recording ? "Stop recording" : "Dictate · \(s.shortcutName)")
+                    .accessibilityLabel(s.recording ? "Stop recording" : "Start dictation")
+                    .accessibilityHint(s.recording ? "Stops the current dictation" : "Starts recording a dictation")
+                    .disabled(s.busy)
+                Button { s.toggle(kind: "Notetaker") } label: { Image(systemName: "record.circle").foregroundStyle(.white).frame(width: 34, height: 32) }
+                    .help("New note · ⌥M")
+                    .accessibilityLabel("Start new note")
+                    .accessibilityHint("Starts recording a new note")
+                    .disabled(s.recording || s.busy)
+                Button { s.showPage("Scratchpad") } label: { Image(systemName: "square.and.pencil").foregroundStyle(.white.opacity(0.8)).frame(width: 34, height: 30) }
+                    .help("Open scratchpad")
+                    .accessibilityLabel("Open Scratchpad")
+                    .accessibilityHint("Opens the Scratchpad in the main window")
             }.font(.system(size: 17)).buttonStyle(.plain).padding(.vertical, 10).frame(width: 44, height: 180).background(.black.opacity(0.9), in: Capsule()).overlay(Capsule().stroke(.white.opacity(0.18)))
             if s.recording || s.busy || s.error != nil || s.widgetNotice != nil || s.correctionSuggestion != nil {
                 VStack(alignment: .leading, spacing: 7) {
                     HStack(spacing: 7) {
                         Circle().fill(s.recording ? Color.red : .mint).frame(width: 5, height: 5)
-                        Text(s.recording ? (s.handsFree ? "Hands-free" : "Listening") : s.busy ? "Processing" : s.error != nil ? "Needs attention" : s.correctionSuggestion != nil ? "Learn this correction?" : "LocalFlow").font(.system(size: 11, weight: .medium))
+                        Text(s.recording ? (s.handsFree ? "Hands-free" : "Listening") : s.busy ? "Processing" : s.error != nil ? "Needs attention" : s.correctionSuggestion != nil ? "Learn this correction?" : "LocalFlow")
+                            .font(.system(size: 11, weight: .medium))
+                            .accessibilityLabel("LocalFlow status")
+                            .accessibilityValue(accessibilityState)
                         Spacer()
                         if s.recording { TimelineView(.periodic(from: .now, by: 1)) { context in Text(String(format: "%02d:%02d", Int(context.date.timeIntervalSince(s.started ?? context.date)) / 60, Int(context.date.timeIntervalSince(s.started ?? context.date)) % 60)).font(.system(size: 10, design: .monospaced)) } }
                     }
@@ -159,10 +179,17 @@ struct FloatingView: View {
                             }.frame(maxWidth: .infinity).frame(height: 28)
                         }
                     }
-                    Text(recordingFooter).font(.system(size: 9)).foregroundStyle(.white.opacity(0.5))
+                    Text(recordingFooter).font(.system(size: 9)).foregroundStyle(.white.opacity(0.7))
                 }.foregroundStyle(.white).padding(12).frame(width: 220).background(.black.opacity(0.92), in: RoundedRectangle(cornerRadius: 15))
             }
         }.fixedSize(horizontal: true, vertical: true).padding(.leading, 2)
+    }
+
+    var accessibilityState: String {
+        if s.recording { return "Recording" }
+        if s.busy { return "Processing" }
+        if s.error != nil { return "Error" }
+        return "Idle"
     }
 
     var recordingFooter: String {
