@@ -11,13 +11,10 @@ There is no transcription subscription and no account required. Speech recogniti
 **[⬇ Download for Apple Silicon](https://github.com/girzsebastian/LocalFlow/releases/latest)** · [Build from source](#build-from-source) · [How it works](#how-it-works) · [Contributing](CONTRIBUTING.md)
 
 <!--
-  Screenshots. Run ./scripts/capture-screenshots.sh — it walks through the five
-  shots below, names them and downscales them. The references are already here,
-  so they appear the moment the files exist.
-
-  Still missing and worth more than all of them: a ~15s GIF of a real dictation.
-  Cursor in a text field, hold the shortcut, speak, release, text appears. No
-  cuts, no speed-up — the honest latency is the selling point. Issue #5.
+  Screenshots live in docs/images/ and are referenced below; they appear as soon
+  as the files exist. Still missing and worth more than all of them: a ~15s GIF
+  of a real dictation, uncut and at real speed, because the honest latency is
+  the selling point. Issue #5.
 -->
 
 ![LocalFlow's library of dictations and meeting notes](docs/images/library.png)
