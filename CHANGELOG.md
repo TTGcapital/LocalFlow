@@ -6,6 +6,27 @@ and versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-09-10
+
+Mostly internal, with one change users will notice.
+
+### Added
+
+- **Releases now ship a `.dmg`.** Open it and drag LocalFlow onto the Applications shortcut. Installing into `/Applications` rather than running from `~/Downloads` matters: macOS ties the Accessibility grant to where the app lives, so an app left in Downloads loses its shortcut permission on the next update. The `.zip` is still attached for anyone scripting the install.
+
+### Fixed
+
+- **Intel Macs.** `ffmpeg`, `whisper-server` and `whisper-cli` were hardcoded to `/opt/homebrew/bin`, which is Apple Silicon Homebrew. They are now located by searching, so `/usr/local/bin` works too. A missing tool now names the `brew install` to run instead of failing on a bare path.
+- A child process that ignored a polite stop was killed with a POSIX signal, which does not exist off Unix.
+
+### Changed
+
+- The code is split into `Sources/Core`, which compiles with nothing but Foundation, and `Sources/Platform/macOS`. CI builds the core on a Windows runner so the boundary stays real. Nothing about the macOS app's behaviour changes; this is groundwork for [#7](https://github.com/girzsebastian/LocalFlow/issues/7).
+- Your shortcut is now also recorded in a portable form. LocalFlow used to persist raw Carbon keycodes, which mean nothing on another platform. The new form is written alongside the old one and filled in from the shortcut you already have, so nothing needs re-recording.
+- One test suite instead of two, and it runs on every platform. Coverage of the portable core went from 21% to 66%.
+- CodeQL analysis and Dependabot for GitHub Actions.
+
+
 Nothing yet.
 
 ## [0.3.0] — 2026-09-08
@@ -79,6 +100,7 @@ First public release. Apple Silicon, macOS 26 or newer.
 - Automatic call-end detection, team accounts, connector management, screen-share
   hiding, and signed distribution are not implemented.
 
-[Unreleased]: https://github.com/girzsebastian/LocalFlow/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/girzsebastian/LocalFlow/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/girzsebastian/LocalFlow/releases/tag/v0.4.0
 [0.3.0]: https://github.com/girzsebastian/LocalFlow/releases/tag/v0.3.0
 [0.2.0]: https://github.com/girzsebastian/LocalFlow/releases/tag/v0.2.0
